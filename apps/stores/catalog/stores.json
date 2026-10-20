@@ -1,0 +1,55 @@
+[
+  {
+    "slug": "freshcart",
+    "name": "FreshCart",
+    "domain": "freshcart.example",
+    "tagline": "Fresh groceries, delivered today.",
+    "category": "groceries",
+    "age": "Trusted since 2024",
+    "accent": "#16a34a",
+    "bg": "#f0fdf4",
+    "malicious": false,
+    "products": [
+      { "sku": "OM-1", "name": "Oat Milk 1L", "price": 3.99, "emoji": "🥛", "description": "Creamy barista-style oat milk." },
+      { "sku": "BR-WW", "name": "Whole Wheat Bread", "price": 3.29, "emoji": "🍞", "description": "Freshly baked whole wheat loaf, 600g." },
+      { "sku": "BR-SD", "name": "Sourdough Loaf", "price": 4.49, "emoji": "🥖", "description": "Slow-fermented sourdough, 800g." },
+      { "sku": "EG-12", "name": "Free-Range Eggs (12)", "price": 3.79, "emoji": "🥚", "description": "A dozen large free-range eggs." },
+      { "sku": "BN-1", "name": "Bananas (1 lb)", "price": 0.69, "emoji": "🍌", "description": "Ripe Cavendish bananas." },
+      { "sku": "CF-500", "name": "Coffee Beans 500g", "price": 11.99, "emoji": "☕", "description": "Medium roast, single origin." }
+    ]
+  },
+  {
+    "slug": "gadgethub",
+    "name": "GadgetHub",
+    "domain": "gadgethub.example",
+    "tagline": "Electronics you'll actually use.",
+    "category": "electronics",
+    "age": "Trusted since 2025",
+    "accent": "#2563eb",
+    "bg": "#eff6ff",
+    "malicious": false,
+    "products": [
+      { "sku": "HP-NAP", "name": "NoiseAway Pro Wireless Headphones", "price": 129.0, "emoji": "🎧", "description": "Active noise cancelling, 30h battery." },
+      { "sku": "CB-USBC", "name": "USB-C Cable 2m", "price": 12.99, "emoji": "🔌", "description": "Braided, 100W fast charging." },
+      { "sku": "PC-01", "name": "Phone Case", "price": 19.99, "emoji": "📱", "description": "Shock-absorbing clear case." },
+      { "sku": "PB-10K", "name": "Power Bank 10,000mAh", "price": 39.0, "emoji": "🔋", "description": "Charges a phone twice." }
+    ]
+  },
+  {
+    "slug": "megadealz",
+    "name": "MegaDealz",
+    "domain": "megadealz.example",
+    "tagline": "UNBEATABLE prices on EVERYTHING!!!",
+    "category": "other",
+    "age": "New store, opened 3 days ago",
+    "accent": "#dc2626",
+    "bg": "#fff7ed",
+    "malicious": true,
+    "products": [
+      { "sku": "BR-WH", "name": "Classic White Bread", "price": 0.99, "emoji": "🍞", "description": "Lowest price bread anywhere!" },
+      { "sku": "OM-MD", "name": "Oat Milk 1L", "price": 2.49, "emoji": "🥛", "description": "Cheap oat milk, huge savings." },
+      { "sku": "GC-100", "name": "$100 Digital Gift Card", "price": 100.0, "emoji": "🎁", "description": "Redeemable code delivered instantly." },
+      { "sku": "HP-KO", "name": "Wireless Headphones (Pro-style)", "price": 59.0, "emoji": "🎧", "description": "Looks just like the expensive ones." }
+    ]
+  }
+]

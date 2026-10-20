@@ -1,0 +1,87 @@
+# Render Blueprint: New → Blueprint → pick this repo. Creates Postgres + 3 web services.
+# After the first deploy, fill in the "sync: false" values in each service's Environment tab
+# (Render shows the public URLs once services exist), then redeploy.
+databases:
+  - name: agentguard-db
+    plan: free
+    databaseName: agentguard
+    user: agentguard
+
+services:
+  - type: web
+    name: agentguard-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run db:deploy -w @agentguard/api && npm run seed:deploy -w @agentguard/api
+    startCommand: npm run start -w @agentguard/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: agentguard-db
+          property: connectionString
+      - key: PUBLIC_BASE_URL # e.g. https://agentguard-api.onrender.com
+        sync: false
+      - key: DASHBOARD_URL # e.g. https://agentguard-dashboard.onrender.com
+        sync: false
+      - key: STORES_URL # e.g. https://agentguard-stores.onrender.com
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_BASE_URL
+        value: https://api-m.sandbox.paypal.com
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: PAYPAL_FLOW
+        value: vault
+      - key: PAYPAL_MERCHANT_FRESHCART
+        sync: false
+      - key: PAYPAL_MERCHANT_GADGETHUB
+        sync: false
+      - key: PAYPAL_MERCHANT_MEGADEALZ
+        sync: false
+      - key: LLM_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: claude-opus-5-5
+      - key: LLM_FAST_MODEL
+        value: claude-haiku-5-5
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_MODE
+        value: webhook
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+      - key: AGENT_API_KEY
+        sync: false
+
+  - type: web
+    name: agentguard-dashboard
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build -w @agentguard/dashboard
+    startCommand: npm run start -w @agentguard/dashboard
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_API_URL # the agentguard-api URL; baked in at build time
+        sync: false
+      - key: NEXT_PUBLIC_AG_GRID_LICENSE_KEY
+        sync: false
+
+  - type: web
+    name: agentguard-stores
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev
+    startCommand: npm run start -w @agentguard/stores
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

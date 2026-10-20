@@ -1,0 +1,46 @@
+{
+  "name": "agentguard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A spending firewall for AI agents, powered by PayPal",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "db:local": "node scripts/local-db.mjs",
+    "db:migrate": "npm run db:migrate -w @agentguard/api",
+    "db:deploy": "npm run db:deploy -w @agentguard/api",
+    "seed": "npm run seed -w @agentguard/api",
+    "demo:reset": "npm run seed -w @agentguard/api -- --reset",
+    "dev": "concurrently -k -n api,dash,stores -c cyan,magenta,yellow \"npm run dev -w @agentguard/api\" \"npm run dev -w @agentguard/dashboard\" \"npm run dev -w @agentguard/stores\"",
+    "dev:api": "npm run dev -w @agentguard/api",
+    "dev:dashboard": "npm run dev -w @agentguard/dashboard",
+    "dev:stores": "npm run dev -w @agentguard/stores",
+    "agent": "npm run start -w @agentguard/demo-agent --",
+    "mcp:stdio": "npm run mcp:stdio -w @agentguard/api",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "concurrently": "^9.2.1",
+    "embedded-postgres": "18.4.0-beta.17",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "@embedded-postgres/windows-x64@18.4.0-beta.17": true,
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "esbuild@0.28.2": true,
+    "prisma@6.19.3": true
+  }
+}

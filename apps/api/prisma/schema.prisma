@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String           @id @default(cuid())
+  name                String
+  telegramChatId      String?
+  telegramUsername    String?
+  paypalVaultId       String?
+  paypalCustomerId    String?
+  pendingSetupTokenId String?
+  killSwitch          Boolean          @default(false)
+  createdAt           DateTime         @default(now())
+  policies            Policy[]
+  tasks               Task[]
+  requests            PaymentRequest[]
+}
+
+model Policy {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  rawText        String // what the user typed
+  compiled       Json // validated policy JSON
+  summary        String // back-translation
+  clarifications Json     @default("[]")
+  engine         String   @default("rules") // "llm" | "rules"
+  active         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([userId, active])
+}
+
+model Task {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  description String // "buy oat milk and bread"
+  createdAt   DateTime         @default(now())
+  requests    PaymentRequest[]
+}
+
+model Merchant {
+  id           String           @id @default(cuid())
+  domain       String           @unique
+  name         String
+  paypalEmail  String
+  category     String?
+  createdAtSim DateTime // simulated "store age" for the demo
+  trustNotes   String?
+  requests     PaymentRequest[]
+}
+
+model PaymentRequest {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id])
+  taskId            String?
+  task              Task?     @relation(fields: [taskId], references: [id])
+  merchantId        String?
+  merchant          Merchant? @relation(fields: [merchantId], references: [id])
+  merchantDomain    String
+  item              String
+  quantity          Int       @default(1)
+  category          String?
+  amount            Decimal   @db.Decimal(12, 2)
+  currency          String    @default("USD")
+  sourceExcerpt     String? // page content the agent saw (truncated)
+  decision          Decision
+  riskScore         Int
+  signals           Json // each signal + points
+  rulesFired        Json // every rule result (pass/ask/block)
+  aiChecks          Json? // raw intent / injection / category outputs
+  injectionDetected Boolean   @default(false)
+  intentAligned     Boolean?
+  explanation       String
+  status            PayStatus
+  paypalOrderId     String?
+  paypalAuthId      String?
+  paypalCaptureId   String?
+  approveUrl        String? // fallback flow (§8.4): PayPal approval link
+  failureReason     String?
+  decidedBy         String    @default("engine") // "engine" | "human" | "timeout"
+  telegramMessageId Int?
+  reconciledAt      DateTime?
+  createdAt         DateTime  @default(now())
+  resolvedAt        DateTime?
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+enum Decision {
+  APPROVE
+  ASK_HUMAN
+  BLOCK
+}
+
+enum PayStatus {
+  PENDING
+  HELD
+  PAID
+  VOIDED
+  BLOCKED
+  FAILED
+  REFUNDED
+}
+
+model WebhookEvent {
+  id         String   @id
+  eventType  String
+  resourceId String?
+  verified   Boolean  @default(false)
+  payload    Json
+  receivedAt DateTime @default(now())
+}
