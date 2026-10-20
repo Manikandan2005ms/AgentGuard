@@ -82,6 +82,8 @@ services:
         sync: false
       - key: NEXT_PUBLIC_AG_GRID_LICENSE_KEY
         sync: false
+      - key: NEXT_PUBLIC_SITE_URL # this dashboard's own URL, for social previews
+        sync: false
 
   - type: web
     name: agentguard-stores

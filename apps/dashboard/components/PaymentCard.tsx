@@ -25,13 +25,14 @@ export function PaymentCard({ p, fresh }: { p: PaymentRequestDTO; fresh?: boolea
   // Show the hidden snippet that matched the most injection patterns.
   const patternCount = (t: string) => (/\(([^)]+)\)/.exec(t)?.[1]?.split(",").length ?? 0);
   const hidden = p.injectionEvidence.filter((e) => e.hidden).sort((a, b) => patternCount(b.technique) - patternCount(a.technique))[0];
+  const amount = p.kind === "paypal_tool" && p.amount === 0 ? "–" : money(p.amount, p.currency);
 
   return (
     <article
       className={`card relative overflow-hidden p-4 ${fresh ? "flash-in" : ""}`}
       style={{ borderLeft: `4px solid ${decisionColor(p.decision)}` }}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3 sm:gap-4">
         <RiskGauge score={p.riskScore} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -41,9 +42,13 @@ export function PaymentCard({ p, fresh }: { p: PaymentRequestDTO; fresh?: boolea
             {p.injectionDetected && (
               <span className="rounded-full border border-bad/40 bg-bad/10 px-2 py-0.5 text-xs font-semibold text-bad">⚠ prompt injection</span>
             )}
-            <span className="ml-auto text-xs text-muted">{timeAgo(p.createdAt)}</span>
+            <span className="ml-auto flex items-center gap-2">
+              {/* On phones the amount sits here instead of in its own column. */}
+              <span className="text-sm font-bold sm:hidden">{amount}</span>
+              <span className="text-xs text-muted">{timeAgo(p.createdAt)}</span>
+            </span>
           </div>
-          <h3 className="mt-2 truncate text-base font-semibold">
+          <h3 className="mt-2 break-words text-base font-semibold sm:truncate">
             {p.quantity > 1 ? `${p.quantity} × ` : ""}
             {p.item}
           </h3>
@@ -66,8 +71,8 @@ export function PaymentCard({ p, fresh }: { p: PaymentRequestDTO; fresh?: boolea
           )}
           {p.failureReason && <p className="mt-2 text-xs text-bad">{p.failureReason}</p>}
         </div>
-        <div className="text-right">
-          <div className="text-lg font-bold">{p.kind === "paypal_tool" && p.amount === 0 ? "–" : money(p.amount, p.currency)}</div>
+        <div className="hidden text-right sm:block">
+          <div className="text-lg font-bold">{amount}</div>
           {p.paypalCaptureId && <div className="mt-1 font-mono text-[10px] text-muted">cap {p.paypalCaptureId.slice(-10)}</div>}
         </div>
       </div>

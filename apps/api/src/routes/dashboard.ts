@@ -9,7 +9,7 @@ import { publish, subscribe } from "../events";
 import { reconcileJob } from "../jobs";
 import { LIMITS } from "../lib/limits";
 import { toDTO, withRelations } from "../services/dto";
-import { activatePolicy, activePolicyView, compileAndSave, listPolicies } from "../services/policyService";
+import { activatePolicy, activePolicyView, compileAndSave, listPolicies, simulatePolicy } from "../services/policyService";
 import { budgetUsage, summary } from "../services/statsService";
 import { getUser } from "../services/users";
 import { telegramBotUsername } from "../telegram/bot";
@@ -47,6 +47,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
   app.post("/api/policies/:id/activate", { config: { rateLimit: LIMITS.admin } }, async (req, reply) => {
     const p = await activatePolicy((req.params as { id: string }).id);
     return p ?? reply.code(404).send({ error: "Policy not found" });
+  });
+  app.post("/api/policies/:id/simulate", { config: { rateLimit: LIMITS.payments } }, async (req, reply) => {
+    const result = await simulatePolicy((req.params as { id: string }).id);
+    return result ?? reply.code(404).send({ error: "Policy not found" });
   });
   app.get("/api/policies/active", async () => ({ policy: await activePolicyView() }));
   app.get("/api/policies", async () => listPolicies());

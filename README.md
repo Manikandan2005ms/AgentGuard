@@ -17,7 +17,7 @@
 | You approve every click, or nothing. | Small, in-policy purchases go through instantly. Bigger ones are **authorized (funds held)** and you tap ✅ / ❌ on Telegram; only then is the money captured or the hold voided. |
 | Nobody can say why a payment happened. | Every decision is logged with the rules that fired, every risk signal, and a one-sentence explanation, all in an AG Grid audit log. |
 
-**Key features:** natural-language policies · intent-bound purchases · two-layer prompt-injection detection · 0–100 risk scoring · authorize-then-capture · Telegram approvals · explainable audit log · kill switch · a "guarded PayPal" MCP server any agent can plug into, including **PayPal's own Agent Toolkit tools behind the firewall** · a **Try it** page that runs every scenario from the browser.
+**Key features:** natural-language policies · intent-bound purchases · two-layer prompt-injection detection · 0–100 risk scoring · authorize-then-capture · Telegram approvals · explainable audit log · kill switch · a "guarded PayPal" MCP server any agent can plug into, including **PayPal's own Agent Toolkit tools behind the firewall** · a **Try it** page that runs every scenario from the browser · a **policy simulator** that replays the last 30 days against new rules before you turn them on · AG Grid + AG Charts analytics.
 
 ## Architecture
 
@@ -95,6 +95,12 @@ The dashboard header always shows which mode each piece is in.
 | **Refunds** | A refund endpoint for captured agent payments. |
 | **PayPal Agent Toolkit** (`@paypal/agent-toolkit`) | All 47 toolkit tools are offered on AgentGuard's MCP server under their own names. Read-only tools pass straight through. Refunds, dispute acceptance, cancellations, invoices and orders go through the firewall: policy limits, injection scan of the message that triggered them, intent check, Telegram approval and the audit log. This protects merchant "ops agents", not just shopping agents. |
 
+## AG Grid and AG Charts
+
+- **Audit log** (AG Grid Enterprise): row grouping (buttons or drag-to-group), master-detail rows with every rule, signal and piece of evidence, set and floating filters, quick search, status-bar aggregations, CSV/Excel export, live row updates, a **risk-signal sparkline** per row, **integrated charts** (one-click "Requested $ by merchant" and "Risk by decision", or select any cells → right-click → Chart Range), and row actions (approve, reject, refund).
+- **Policy simulator** (AG Grid): actual vs. new-policy decision for every replayed purchase, with changed rows highlighted.
+- **Budgets** (AG Charts): spent / held / remaining per budget, 7-day captured spend vs. blocked attempts (dual axis), decision mix and spend-by-category donuts.
+
 ## Connect your own agent (MCP)
 
 AgentGuard speaks MCP over Streamable HTTP at `http://localhost:4000/mcp` (or your Render URL):
@@ -111,7 +117,7 @@ For MCP clients that launch stdio servers: `npm run mcp:stdio`. Set `AGENT_API_K
 
 ```
 apps/api/          Fastify API + MCP server (incl. guarded PayPal Agent Toolkit), decision core, AI layer, PayPal, Telegram, demo runner, jobs, Prisma
-apps/dashboard/    Next.js + Tailwind + AG Grid Enterprise: live feed, Try it, policies, audit, budgets, threats, setup
+apps/dashboard/    Next.js + Tailwind + AG Grid Enterprise + AG Charts: live feed, Try it, policies (+ simulator), audit, budgets, threats, setup
 apps/stores/       FreshCart (with a support inbox), GadgetHub and the malicious MegaDealz (hidden injections), plus an unguarded checkout
 apps/demo-agent/   Shopping agent (Anthropic SDK tool runner over AgentGuard's MCP tools), scripted, ops and unguarded modes
 packages/shared/   Zod policy schema, shared types, deterministic policy summary
@@ -124,7 +130,7 @@ docs/PHASES.md     The phase-by-phase build and launch guide
 ## Tests
 
 ```bash
-npm test          # 60 tests: policy rules, risk weights, decision matrix + "AI can only escalate", compiler, toolkit policy, injection fixtures
+npm test          # 65 tests: policy rules, risk weights, decision matrix + "AI can only escalate", compiler, toolkit policy, policy simulator, injection fixtures
 npm run typecheck
 ```
 
@@ -161,7 +167,8 @@ All calls use the official Anthropic TypeScript SDK with structured outputs, and
 - **Budgets are rolling windows** (last 24 h / 7 d / 30 d), and held funds count against them.
 - **Public-demo protection**: per-IP rate limits (tighter on routes that call Claude or start demo runs) and a daily cap on Claude calls (`LLM_DAILY_CALL_LIMIT`). Past the cap, AI checks fail safe, so payments ask the human.
 - **Agent Toolkit calls in mock mode** return simulated results; with sandbox keys they run against PayPal for real. Refunding a capture only works for captures your sandbox app owns.
-- **AG Grid Enterprise** features (row grouping, master-detail, set filters, Excel export) run in trial mode with a watermark until you set `NEXT_PUBLIC_AG_GRID_LICENSE_KEY`.
+- **AG Grid / AG Charts Enterprise** features (row grouping, master-detail, set filters, Excel export, integrated charts, sparklines) run in trial mode with a watermark until you set `NEXT_PUBLIC_AG_GRID_LICENSE_KEY`.
+- **Policy simulator** replays only the code layer (policy rules, risk score, decision) and reuses each request's stored AI findings, so it is free and deterministic; it doesn't re-ask Claude.
 
 ## License
 

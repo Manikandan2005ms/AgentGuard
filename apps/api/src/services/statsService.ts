@@ -68,6 +68,16 @@ export async function summary() {
     },
     pendingApprovals: await prisma.paymentRequest.count({ where: { userId: user.id, status: { in: ["HELD", "PENDING"] } } }),
     daily: [...byDay.values()],
+    decisions7d: {
+      approve: rows.filter((r) => r.decision === "APPROVE").length,
+      askHuman: rows.filter((r) => r.decision === "ASK_HUMAN").length,
+      block: rows.filter((r) => r.decision === "BLOCK").length,
+    },
+    spendByCategory7d: [...rows.filter((r) => r.status === "PAID" && r.kind === "payment").reduce((m, r) => {
+      const c = r.category ?? "other";
+      m.set(c, round((m.get(c) ?? 0) + Number(r.amount)));
+      return m;
+    }, new Map<string, number>())].map(([category, spent]) => ({ category, spent })),
   };
 }
 

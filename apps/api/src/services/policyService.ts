@@ -1,6 +1,7 @@
 import { PolicySchema, describePolicy } from "@agentguard/shared";
 import type { Prisma } from "@prisma/client";
 import { compilePolicy } from "../ai/compilePolicy";
+import { replayPolicy } from "../core/policySimulator";
 import { prisma } from "../db";
 import { publish } from "../events";
 import { getUser } from "./users";
@@ -41,6 +42,46 @@ export async function activatePolicy(id: string) {
   ]);
   publish({ type: "policy.activated", policyId: id });
   return serialize({ ...row, active: true });
+}
+
+/** Replays the last 30 days of agent purchases against a (draft) policy. No AI calls, nothing stored. */
+export async function simulatePolicy(id: string) {
+  const user = await getUser();
+  const row = await prisma.policy.findFirst({ where: { id, userId: user.id } });
+  if (!row) return null;
+  const policy = PolicySchema.parse(row.compiled);
+  const windowStart = new Date(Date.now() - 30 * 24 * 3600_000);
+  const requests = await prisma.paymentRequest.findMany({
+    where: { userId: user.id, kind: "payment", createdAt: { gte: windowStart } },
+    include: { merchant: true },
+    orderBy: { createdAt: "asc" },
+  });
+  // Merchants you really paid before the window still count as "used before" in the replay.
+  const prior = await prisma.paymentRequest.findMany({
+    where: { userId: user.id, kind: "payment", status: "PAID", createdAt: { lt: windowStart }, merchantId: { not: null } },
+    select: { merchantId: true },
+    distinct: ["merchantId"],
+  });
+  const replay = replayPolicy(
+    policy,
+    requests.map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      item: r.quantity > 1 ? `${r.quantity} × ${r.item}` : r.item,
+      merchantDomain: r.merchantDomain,
+      merchantId: r.merchantId,
+      merchantCreatedAt: r.merchant?.createdAtSim ?? null,
+      amount: Number(r.amount),
+      currency: r.currency,
+      category: r.category,
+      decision: r.decision,
+      injectionDetected: r.injectionDetected,
+      intentAligned: r.intentAligned,
+      taskBound: !!r.taskId,
+    })),
+    { merchantsPaidBefore: prior.map((p) => p.merchantId!) },
+  );
+  return { policyId: id, windowDays: 30, ...replay };
 }
 
 export async function listPolicies() {

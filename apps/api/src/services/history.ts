@@ -1,15 +1,12 @@
 import type { Category, Period, Policy } from "@agentguard/shared";
 import { prisma } from "../db";
+import { PERIOD_MS } from "../core/periods";
 import type { PolicyHistory } from "../core/policyEngine";
 
 /** Statuses that count against budgets: money already moved or currently held/awaiting approval. */
 export const COMMITTED_STATUSES = ["PAID", "HELD", "PENDING"] as const;
 
-export const PERIOD_MS: Record<Period, number> = {
-  day: 24 * 3600_000,
-  week: 7 * 24 * 3600_000,
-  month: 30 * 24 * 3600_000,
-};
+export { PERIOD_MS };
 
 export interface SpendingHistory extends PolicyHistory {
   avgAmount: number | null;

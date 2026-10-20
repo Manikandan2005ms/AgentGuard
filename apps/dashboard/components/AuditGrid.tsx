@@ -4,8 +4,6 @@ import type { PaymentRequestDTO } from "@agentguard/shared";
 import {
   AllCommunityModule,
   ModuleRegistry,
-  colorSchemeDark,
-  themeQuartz,
   type ColDef,
   type GetRowIdParams,
   type ICellRendererParams,
@@ -18,17 +16,21 @@ import {
   ContextMenuModule,
   ExcelExportModule,
   FiltersToolPanelModule,
+  IntegratedChartsModule,
   LicenseManager,
   MasterDetailModule,
   RowGroupingModule,
   RowGroupingPanelModule,
   SetFilterModule,
   SideBarModule,
+  SparklinesModule,
   StatusBarModule,
 } from "ag-grid-enterprise";
 import { AgGridReact } from "ag-grid-react";
+import { AgChartsEnterpriseModule } from "ag-charts-enterprise";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, money } from "@/lib/api";
+import { gridTheme } from "@/lib/gridTheme";
 import { useLiveEvents } from "@/lib/useLiveEvents";
 import { DecisionPill, StatusPill } from "./Pills";
 
@@ -46,21 +48,13 @@ ModuleRegistry.registerModules([
   ContextMenuModule,
   ExcelExportModule,
   CellSelectionModule,
+  // AG Charts inside the grid: chart any selected range, and sparklines in cells (R4).
+  IntegratedChartsModule.with(AgChartsEnterpriseModule),
+  SparklinesModule.with(AgChartsEnterpriseModule),
 ]);
 if (process.env.NEXT_PUBLIC_AG_GRID_LICENSE_KEY) LicenseManager.setLicenseKey(process.env.NEXT_PUBLIC_AG_GRID_LICENSE_KEY);
 
-const theme = themeQuartz.withPart(colorSchemeDark).withParams({
-  backgroundColor: "#0d1424",
-  foregroundColor: "#e6ebf5",
-  headerBackgroundColor: "#121b2f",
-  chromeBackgroundColor: "#0d1424",
-  borderColor: "#1f2a44",
-  oddRowBackgroundColor: "#0f1729",
-  accentColor: "#22d3ee",
-  rowHoverColor: "#16213a",
-  fontSize: 13,
-  headerFontSize: 12,
-});
+const theme = gridTheme;
 
 type Row = PaymentRequestDTO;
 type Cell<V = unknown> = ICellRendererParams<Row, V>;
@@ -88,15 +82,34 @@ const InjectionCell = (p: Cell<boolean>) => (p.data ? p.value ? <span className=
 
 function ActionsCell(p: Cell) {
   const [busy, setBusy] = useState(false);
-  if (!p.data || p.data.status !== "HELD") return null;
-  const act = async (a: "approve" | "reject") => {
+  const [error, setError] = useState<string | null>(null);
+  if (!p.data) return null;
+  const d = p.data;
+  const act = async (a: "approve" | "reject" | "refund") => {
+    if (a === "refund" && !window.confirm(`Refund ${money(d.amount, d.currency)} for "${d.item}" through PayPal?`)) return;
     setBusy(true);
+    setError(null);
     try {
-      await api(`/api/payments/${p.data!.id}/${a}`, { method: "POST" });
+      await api(`/api/payments/${d.id}/${a}`, { method: "POST" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
   };
+  // Refund: captured agent purchases only (not toolkit actions or seeded history).
+  const refundable = d.status === "PAID" && d.kind === "payment" && !!d.paypalCaptureId && !d.paypalCaptureId.startsWith("SEED-");
+  if (refundable) {
+    return (
+      <div className="flex h-full items-center gap-1" title={error ?? undefined}>
+        <button className="btn btn-ghost !px-2 !py-0.5 !text-xs" disabled={busy} onClick={() => act("refund")}>
+          {busy ? "Refunding…" : "↩ Refund"}
+        </button>
+        {error && <span className="text-[11px] text-bad">failed</span>}
+      </div>
+    );
+  }
+  if (d.status !== "HELD") return null;
   return (
     <div className="flex h-full items-center gap-1">
       <button className="btn btn-ok !px-2 !py-0.5 !text-xs" disabled={busy} onClick={() => act("approve")}>
@@ -200,6 +213,15 @@ export default function AuditGrid() {
   const [rows, setRows] = useState<Row[]>([]);
   const [quick, setQuick] = useState("");
   const [group, setGroup] = useState("No grouping");
+  // Phones: no pinned column, side bar or group drop zone, so the data gets the width.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     api<Row[]>("/api/audit?limit=2000").then(setRows).catch(() => setRows([]));
@@ -233,8 +255,9 @@ export default function AuditGrid() {
         filter: "agDateColumnFilter",
         sort: "desc",
         width: 165,
+        chartDataType: "time",
       },
-      { colId: "task", field: "taskDescription", headerName: "Agent task", width: 220, filter: "agTextColumnFilter", enableRowGroup: true },
+      { colId: "task", field: "taskDescription", headerName: "Agent task", width: 220, filter: "agTextColumnFilter", enableRowGroup: true, chartDataType: "category" },
       {
         colId: "kind",
         headerName: "Type",
@@ -242,6 +265,7 @@ export default function AuditGrid() {
         valueGetter: (p) => (p.data ? (p.data.kind === "paypal_tool" ? `toolkit: ${p.data.toolName}` : "payment") : null),
         filter: "agSetColumnFilter",
         enableRowGroup: true,
+        chartDataType: "category",
       },
       {
         colId: "merchant",
@@ -250,14 +274,27 @@ export default function AuditGrid() {
         valueGetter: (p) => (p.data ? (p.data.kind === "paypal_tool" ? "PayPal account" : (p.data.merchantName ?? p.data.merchantDomain)) : null),
         filter: "agSetColumnFilter",
         enableRowGroup: true,
+        chartDataType: "category",
       },
-      { field: "item", headerName: "Item", width: 220, filter: "agTextColumnFilter" },
-      { field: "quantity", headerName: "Qty", width: 70, filter: "agNumberColumnFilter" },
-      { colId: "category", field: "category", headerName: "Category", width: 120, filter: "agSetColumnFilter", enableRowGroup: true },
-      { field: "amount", headerName: "Amount", width: 110, type: "rightAligned", valueFormatter: fmtMoney, filter: "agNumberColumnFilter", aggFunc: "sum", enableValue: true },
-      { colId: "decision", field: "decision", headerName: "Decision", width: 120, cellRenderer: DecisionCell, filter: "agSetColumnFilter", enableRowGroup: true },
-      { field: "riskScore", headerName: "Risk", width: 120, cellRenderer: RiskCell, filter: "agNumberColumnFilter", aggFunc: "avg", enableValue: true },
-      { colId: "status", field: "status", headerName: "Status", width: 140, cellRenderer: StatusCell, filter: "agSetColumnFilter", enableRowGroup: true },
+      { field: "item", headerName: "Item", width: 220, filter: "agTextColumnFilter", chartDataType: "category" },
+      { field: "quantity", headerName: "Qty", width: 70, filter: "agNumberColumnFilter", chartDataType: "series" },
+      { colId: "category", field: "category", headerName: "Category", width: 120, filter: "agSetColumnFilter", enableRowGroup: true, chartDataType: "category" },
+      { field: "amount", headerName: "Amount", width: 110, type: "rightAligned", valueFormatter: fmtMoney, filter: "agNumberColumnFilter", aggFunc: "sum", enableValue: true, chartDataType: "series" },
+      { colId: "decision", field: "decision", headerName: "Decision", width: 120, cellRenderer: DecisionCell, filter: "agSetColumnFilter", enableRowGroup: true, chartDataType: "category" },
+      { field: "riskScore", headerName: "Risk", width: 120, cellRenderer: RiskCell, filter: "agNumberColumnFilter", aggFunc: "avg", enableValue: true, chartDataType: "series" },
+      {
+        colId: "riskBreakdown",
+        headerName: "Risk signals",
+        headerTooltip: "Points from each risk signal (sparkline)",
+        width: 120,
+        valueGetter: (p) => p.data?.signals.map((s) => s.points) ?? null,
+        cellRenderer: "agSparklineCellRenderer",
+        cellRendererParams: { sparklineOptions: { type: "bar", direction: "vertical", fill: "#f59e0b", stroke: "#f59e0b" } },
+        sortable: false,
+        filter: false,
+        enableCellChangeFlash: false,
+      },
+      { colId: "status", field: "status", headerName: "Status", width: 140, cellRenderer: StatusCell, filter: "agSetColumnFilter", enableRowGroup: true, chartDataType: "category" },
       { field: "injectionDetected", headerName: "Injection", width: 100, cellRenderer: InjectionCell, filter: "agSetColumnFilter", enableRowGroup: true },
       { field: "decidedBy", headerName: "Decided by", width: 110, filter: "agSetColumnFilter", enableRowGroup: true },
       { field: "explanation", headerName: "Explanation", flex: 1, minWidth: 320, tooltipField: "explanation", filter: "agTextColumnFilter" },
@@ -271,12 +308,13 @@ export default function AuditGrid() {
         valueFormatter: (p) => (p.data ? (p.value ? "✓ PayPal" : "–") : ""),
         filter: "agSetColumnFilter",
       },
-      { colId: "actions", headerName: "", width: 160, pinned: "right", cellRenderer: ActionsCell, sortable: false, filter: false, suppressHeaderMenuButton: true },
+      { colId: "actions", headerName: "", width: 160, pinned: narrow ? null : "right", cellRenderer: ActionsCell, sortable: false, filter: false, suppressHeaderMenuButton: true },
     ],
-    [],
+    [narrow],
   );
 
-  const defaultColDef = useMemo<ColDef<Row>>(() => ({ sortable: true, resizable: true, floatingFilter: true }), []);
+  // Integrated charts: only the columns marked "category" or "series" below can be charted.
+  const defaultColDef = useMemo<ColDef<Row>>(() => ({ sortable: true, resizable: true, floatingFilter: true, chartDataType: "excluded" }), []);
   const getRowId = useCallback((p: GetRowIdParams<Row>) => p.data.id, []);
 
   const applyGroup = (label: string) => {
@@ -302,18 +340,32 @@ export default function AuditGrid() {
           placeholder="Search everything…"
           className="w-64 rounded-lg border border-line bg-panel px-3 py-1.5 text-sm outline-none focus:border-shield"
         />
-        <div className="flex overflow-hidden rounded-lg border border-line">
+        <div className="flex max-w-full overflow-x-auto rounded-lg border border-line">
           {GROUPS.map((g) => (
             <button
               key={g.label}
               onClick={() => applyGroup(g.label)}
-              className={`px-3 py-1.5 text-xs font-medium ${group === g.label ? "bg-shield text-ink" : "bg-panel text-muted hover:text-text"}`}
+              className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-medium ${group === g.label ? "bg-shield text-ink" : "bg-panel text-muted hover:text-text"}`}
             >
               {g.label === "No grouping" ? "Flat" : `By ${g.label.toLowerCase()}`}
             </button>
           ))}
         </div>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
+          <button
+            className="btn btn-ghost"
+            title="AG Grid integrated chart: amount agents asked to pay, per merchant (blocked attempts included)"
+            onClick={() => grid.current?.api.createRangeChart({ cellRange: { columns: ["merchant", "amount"] }, chartType: "doughnut", aggFunc: "sum", chartThemeName: "ag-default-dark" })}
+          >
+            📊 Requested $ by merchant
+          </button>
+          <button
+            className="btn btn-ghost"
+            title="AG Grid integrated chart of average risk per decision"
+            onClick={() => grid.current?.api.createRangeChart({ cellRange: { columns: ["decision", "riskScore"] }, chartType: "groupedColumn", aggFunc: "avg", chartThemeName: "ag-default-dark" })}
+          >
+            📊 Risk by decision
+          </button>
           <button className="btn btn-ghost" onClick={() => grid.current?.api.exportDataAsCsv({ fileName: "agentguard-audit.csv" })}>
             Export CSV
           </button>
@@ -335,10 +387,10 @@ export default function AuditGrid() {
           masterDetail
           detailCellRenderer={DetailRow}
           detailRowAutoHeight
-          rowGroupPanelShow="always"
+          rowGroupPanelShow={narrow ? "never" : "always"}
           isGroupOpenByDefault={(p) => p.rowNode.level === 0}
           autoGroupColumnDef={{ headerName: "Group", minWidth: 220 }}
-          sideBar={{ toolPanels: ["columns", "filters"] }}
+          sideBar={narrow ? false : { toolPanels: ["columns", "filters"] }}
           statusBar={{ statusPanels: [{ statusPanel: "agTotalAndFilteredRowCountComponent" }, { statusPanel: "agAggregationComponent" }] }}
           pagination
           paginationPageSize={50}
@@ -346,6 +398,8 @@ export default function AuditGrid() {
           tooltipShowDelay={300}
           animateRows
           cellSelection
+          enableCharts
+          chartThemes={["ag-default-dark"]}
         />
       </div>
     </div>

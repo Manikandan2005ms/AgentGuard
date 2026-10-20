@@ -52,7 +52,8 @@ export async function seedDemo({ reset }: { reset: boolean }): Promise<string[]>
     await prisma.paymentRequest.deleteMany({});
     await prisma.task.deleteMany({});
     await prisma.webhookEvent.deleteMany({});
-    log.push("Reset: removed payment requests, tasks and webhook events");
+    await prisma.policy.deleteMany({ where: { userId: DEMO_USER_ID } });
+    log.push("Reset: removed payment requests, tasks, webhook events and policies");
   }
 
   await prisma.user.upsert({

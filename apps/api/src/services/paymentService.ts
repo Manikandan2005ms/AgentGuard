@@ -449,7 +449,8 @@ export async function handleOrderApproved(orderId: string): Promise<PaymentReque
 export async function refundRequest(id: string): Promise<PaymentRequestDTO> {
   const row = await loadRow(id);
   if (!row) throw new PaymentStateError("Payment request not found", 404);
-  if (row.status !== "PAID" || !row.paypalCaptureId) throw new PaymentStateError("Only captured payments can be refunded");
+  if (row.status !== "PAID" || !row.paypalCaptureId || row.kind !== "payment") throw new PaymentStateError("Only captured payments can be refunded");
+  if (row.paypalCaptureId.startsWith("SEED-")) throw new PaymentStateError("Seeded demo history has no real PayPal capture to refund");
   await gateway.refund(row.paypalCaptureId, row.id);
   return toDTO(await update(id, { status: "REFUNDED", decidedBy: "human", resolvedAt: new Date() }));
 }

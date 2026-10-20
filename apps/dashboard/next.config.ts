@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000",
     NEXT_PUBLIC_AG_GRID_LICENSE_KEY: process.env.NEXT_PUBLIC_AG_GRID_LICENSE_KEY ?? "",
+    // Public dashboard URL, used for absolute social-preview links
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? process.env.DASHBOARD_URL ?? "",
   },
 };
 

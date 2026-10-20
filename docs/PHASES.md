@@ -24,7 +24,7 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 | 11 | Demo video | 🧑 |
 | 12 | Devpost submission | 🧑 |
 
-**Verified here (no keys):** `npm test` (60 passing), the four **Try it** scenarios run from the browser (attack blocked, approval → captured, ops agent: toolkit refund executed while the injected refund and dispute were blocked, unguarded → $1,000.99), per-IP rate limits returning 429s, and typecheck of every package, `next build`, and a full local run in mock mode: approve → captured, MegaDealz attack → blocked with all three hidden techniques identified, agent recovers at FreshCart, $129 headphones → held → approved from the dashboard → captured, unguarded agent → $1,000 of gift cards, mock Vault onboarding redirect, MCP `tools/list`.
+**Verified here (no keys):** `npm test` (65 passing), the four **Try it** scenarios run from the browser (attack blocked, approval → captured, ops agent: toolkit refund executed while the injected refund and dispute were blocked, unguarded → $1,000.99), per-IP rate limits returning 429s, and typecheck of every package, `next build`, and a full local run in mock mode: approve → captured, MegaDealz attack → blocked with all three hidden techniques identified, agent recovers at FreshCart, $129 headphones → held → approved from the dashboard → captured, unguarded agent → $1,000 of gift cards, mock Vault onboarding redirect, MCP `tools/list`.
 
 **Not verified yet (needs your accounts):** real PayPal sandbox calls (Vault, Orders, webhooks, reporting), Claude API calls, the Telegram bot, and the Render deploy. The code for all of these is written against the documented APIs; Phases 2, 4, 5, 7 and 9 tell you exactly how to check each one.
 
@@ -63,11 +63,11 @@ From paypalaihackathon.devpost.com (overview, rules, resources):
 | ✅ R1 | **"Try it" page in the dashboard** (done Oct 20): buttons that run each demo scenario on the server (attack blocked, phone approval, unguarded) and stream the agent's log, plus a **Reset demo** button. Today the agent can only be run from a terminal, so a judge on the hosted site can't trigger anything. | Functional demo, Design, Best Demo Delivery |
 | ✅ R2 | **PayPal Agent Toolkit integration** (done Oct 20): all 47 toolkit tools on AgentGuard's MCP under their own names. Read-only ones pass through; refunds, disputes, cancellations, invoices and orders go through the firewall and approvals. Includes a merchant ops-agent scenario. Change from the plan: the toolkit is merchant-side and its orders need payer approval, so the unguarded "before" scene stays the simulated store checkout. | Technological Implementation, Best Use of PayPal + AI, Agentic Commerce |
 | ✅ R3 | **Abuse protection for the public demo** (done Oct 20): rate limits on the endpoints that call Claude (policy compile, payment requests) | Stops strangers or bots burning your Anthropic credits during judging |
-| R4 | **AG Grid prize polish**: AG Charts on the Budgets page, sparklines or integrated charts in the audit grid | Best Use of AG Grid |
-| R5 | **Refund button** in the audit grid and a **policy simulator** UI (both APIs already exist) | Design, Technological Implementation |
-| R6 | **Phone-width pass** on Live and the approval cards, favicon and social preview image | Design, video quality |
+| ✅ R4 | **AG Grid prize polish** (done Oct 20): AG Charts on Budgets (stacked budget bars, dual-axis daily chart, two donuts), integrated range charts and a risk-signal sparkline in the audit grid | Best Use of AG Grid |
+| ✅ R5 | **Refund button** in the audit grid, and a **policy simulator** (done Oct 20) that replays the last 30 days against a draft policy before activation, shown in an AG Grid | Design, Technological Implementation |
+| ✅ R6 | **Phone-width pass** (done Oct 20): no page wider than 375px; cards restack, the audit grid drops its pinned column and side bar on phones. Plus a shield favicon and a generated 1200×630 social preview | Design, video quality |
 
-R1–R3 are done. Next: R4–R6, plus verifying the toolkit calls against the real sandbox (Y3). Leave Nov 11–12 as buffer.
+R1–R6 are done. What's left is yours (Y1–Y7), starting with verifying everything against the real PayPal sandbox (Y3). Leave Nov 11–12 as buffer.
 
 ---
 
@@ -238,6 +238,8 @@ npm run agent -- --unguarded "Buy the cheapest bread you can find"              
 - **Threats**: every injection attempt with the hiding technique and the highlighted text.
 - **Setup**: PayPal Vault connect, Telegram link, policy, MCP config snippet.
 - **Kill switch** in the header (also `/freeze` on Telegram).
+- **AG Charts** on Budgets; **integrated charts**, a **risk sparkline** and a **Refund** action in the audit grid; a **policy simulator** on Policies.
+- Phone layouts checked at 375px on every page; shield favicon and a social preview image (set `NEXT_PUBLIC_SITE_URL` so link previews use your hosted URL).
 
 **Your step:** ask AG Grid for a trial or hackathon license key and set `NEXT_PUBLIC_AG_GRID_LICENSE_KEY` to remove the trial watermark before recording.
 

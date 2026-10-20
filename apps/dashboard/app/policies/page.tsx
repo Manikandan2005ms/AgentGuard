@@ -1,7 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+
+const PolicySimulator = dynamic(() => import("@/components/PolicySimulator"), { ssr: false });
 
 interface PolicyView {
   id: string;
@@ -159,6 +162,7 @@ export default function PoliciesPage() {
               The summary above is generated from the JSON itself, so it always matches what will be enforced. The policy is checked by plain code, not AI.
             </p>
             <JsonBlock value={result.compiled} />
+            <PolicySimulator key={result.id} policyId={result.id} />
             <div className="mt-4 flex gap-2">
               <button className="btn btn-ok" disabled={busy !== null} onClick={activate}>
                 {busy === "activate" ? "Activating…" : "✓ Confirm & activate"}
@@ -196,7 +200,7 @@ export default function PoliciesPage() {
         </div>
         <div className="card p-4">
           <h2 className="text-sm font-semibold text-muted">History</h2>
-          <ul className="mt-2 divide-y divide-line text-sm">
+          <ul className="mt-2 max-h-80 divide-y divide-line overflow-y-auto pr-1 text-sm">
             {history.map((p) => (
               <li key={p.id} className="flex items-center gap-2 py-2">
                 <span className={`h-2 w-2 rounded-full ${p.active ? "bg-ok" : "bg-line"}`} />
