@@ -15,6 +15,8 @@ export interface ExplainInput {
   rules: RuleResult[];
   signals: RiskSignal[];
   injectionTechniques: string[];
+  /** "paypal_tool" = a guarded PayPal Agent Toolkit action rather than a purchase. */
+  kind?: "payment" | "paypal_tool";
 }
 
 const ExplanationSchema = z.object({ sentence: z.string() });
@@ -24,11 +26,21 @@ Start with "Approved:", "Needs your OK:" or "Blocked:" to match the decision. Me
 
 export function templateExplanation(x: ExplainInput): string {
   const money = `${x.currency === "USD" ? "$" : `${x.currency} `}${x.amount.toFixed(2)}`;
+  const tool = x.kind === "paypal_tool";
+  // Don't repeat the hidden-instructions sentence if a rule already said it.
+  const said = x.reasons.some((r) => /hidden instructions/i.test(r));
   const top = x.reasons.slice(0, 2).join(" ");
-  const injection = x.injectionTechniques.length ? " The product page contained hidden instructions aimed at AI agents." : "";
+  const injection =
+    x.injectionTechniques.length && !said
+      ? tool
+        ? " The message behind it contained hidden instructions aimed at AI agents."
+        : " The product page contained hidden instructions aimed at AI agents."
+      : "";
   switch (x.decision) {
     case "APPROVE":
-      return `Approved: ${money} for ${x.item} at ${x.merchant} is within your policy (risk ${x.riskScore}/100).`;
+      return tool
+        ? `Approved: ${x.item} is within your policy (risk ${x.riskScore}/100).`
+        : `Approved: ${money} for ${x.item} at ${x.merchant} is within your policy (risk ${x.riskScore}/100).`;
     case "ASK_HUMAN":
       return `Needs your OK: ${top}${injection}`.trim();
     case "BLOCK":
@@ -39,6 +51,7 @@ export function templateExplanation(x: ExplainInput): string {
 export async function explainDecision(x: ExplainInput): Promise<{ text: string; engine: "llm" | "template" }> {
   const fallback = templateExplanation(x);
   const facts = {
+    kind: x.kind === "paypal_tool" ? "PayPal Agent Toolkit action by an AI agent" : "purchase by an AI shopping agent",
     decision: x.decision,
     item: x.item,
     merchant: x.merchant,

@@ -39,6 +39,14 @@ const EnvSchema = z.object({
 
   AGENT_API_KEY: opt,
   CORS_ORIGINS: opt,
+
+  // Abuse protection for the public demo (R3)
+  RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(300),
+  LLM_DAILY_CALL_LIMIT: z.coerce.number().int().positive().default(1500),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
+
+  // PayPal Agent Toolkit behind the firewall (R2): "all", "none", or a comma list of tool names
+  PAYPAL_TOOLKIT_TOOLS: z.string().default("all"),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

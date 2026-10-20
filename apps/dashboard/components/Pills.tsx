@@ -23,9 +23,27 @@ export function DecisionPill({ decision }: { decision: DecisionType }) {
   return <span className={`${base} ${d.cls}`}>{d.label}</span>;
 }
 
-export function StatusPill({ status }: { status: PayStatusType }) {
+/** PayPal Agent Toolkit actions don't hold or capture funds; they wait, run, or don't run. */
+const TOOL_LABELS: Partial<Record<PayStatusType, string>> = {
+  HELD: "Awaiting you",
+  PENDING: "Running",
+  PAID: "Executed",
+  BLOCKED: "Not executed",
+  VOIDED: "Rejected",
+};
+
+export function StatusPill({ status, kind }: { status: PayStatusType; kind?: string }) {
   const s = STATUS[status];
-  return <span className={`${base} ${s.cls}`}>{s.label}</span>;
+  const label = kind === "paypal_tool" ? (TOOL_LABELS[status] ?? s.label) : s.label;
+  return <span className={`${base} ${s.cls}`}>{label}</span>;
+}
+
+export function ToolBadge({ name }: { name: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/40 bg-sky-400/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-sky-300">
+      PayPal toolkit · {name}
+    </span>
+  );
 }
 
 export const decisionColor = (d: DecisionType) => (d === "APPROVE" ? "#22c55e" : d === "ASK_HUMAN" ? "#f59e0b" : "#ef4444");

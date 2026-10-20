@@ -51,7 +51,12 @@ export interface AgentResult {
   payment_status: PayStatusType;
   paypal?: { order_id?: string | null; capture_id?: string | null };
   approve_url?: string | null;
+  /** For guarded PayPal Agent Toolkit calls: the tool and PayPal's response once it ran. */
+  tool?: string;
+  paypal_result?: unknown;
 }
+
+export type RequestKind = "payment" | "paypal_tool";
 
 export interface InjectionEvidence {
   technique: string;
@@ -62,6 +67,10 @@ export interface InjectionEvidence {
 /** JSON shape of a payment request as the dashboard sees it. */
 export interface PaymentRequestDTO {
   id: string;
+  kind: RequestKind;
+  toolName: string | null;
+  toolArgs: unknown;
+  toolResult: unknown;
   createdAt: string;
   resolvedAt: string | null;
   taskId: string | null;
@@ -101,8 +110,13 @@ export interface BudgetUsageDTO {
   held: number;
 }
 
+export type DemoRunStatus = "running" | "finished" | "failed";
+
 export type LiveEvent =
   | { type: "payment.created"; payment: PaymentRequestDTO }
   | { type: "payment.updated"; payment: PaymentRequestDTO }
   | { type: "killswitch"; enabled: boolean }
-  | { type: "policy.activated"; policyId: string };
+  | { type: "policy.activated"; policyId: string }
+  | { type: "demo.log"; runId: string; line: string }
+  | { type: "demo.status"; runId: string; scenario: string; status: DemoRunStatus }
+  | { type: "demo.reset" };

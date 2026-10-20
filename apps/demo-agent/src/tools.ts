@@ -147,4 +147,30 @@ export class AgentGuard {
   async remainingBudget(category?: string) {
     return this.call<unknown>("get_remaining_budget", category ? { category } : {});
   }
+
+  /**
+   * Calls one of PayPal's Agent Toolkit tools through AgentGuard (same name and arguments as
+   * PayPal's own MCP server). Read-only tools return PayPal's result directly; guarded ones
+   * return AgentGuard's decision, and a held one waits for the human like a payment does.
+   */
+  async paypalTool(name: string, args: Record<string, unknown>, sourceContent?: string): Promise<unknown> {
+    const res = await this.client.callTool({
+      name,
+      arguments: { ...args, ...(this.taskId ? { agentguard_task_id: this.taskId } : {}), ...(sourceContent ? { agentguard_source_content: sourceContent } : {}) },
+    });
+    const text = (res.content as { type: string; text?: string }[]).find((c) => c.type === "text")?.text ?? "{}";
+    const json = JSON.parse(text) as Partial<AgentResult> & Record<string, unknown>;
+    if (res.isError) {
+      log.info(`   PayPal toolkit error: ${String(json.error ?? text)}`);
+      return json;
+    }
+    if (typeof json.status === "string" && typeof json.request_id === "string") {
+      const r = json as AgentResult;
+      log.guard(r.status, r.reason);
+      if (r.status === "pending_approval") return this.waitForDecision(r);
+    } else {
+      log.info("   read-only call passed straight through to PayPal");
+    }
+    return json;
+  }
 }

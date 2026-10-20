@@ -21,6 +21,10 @@ export function toDTO(r: PaymentRow): PaymentRequestDTO {
   const ai = (r.aiChecks ?? {}) as StoredAiChecks;
   return {
     id: r.id,
+    kind: r.kind === "paypal_tool" ? "paypal_tool" : "payment",
+    toolName: r.toolName,
+    toolArgs: r.toolArgs ?? null,
+    toolResult: r.toolResult ?? null,
     createdAt: r.createdAt.toISOString(),
     resolvedAt: r.resolvedAt?.toISOString() ?? null,
     taskId: r.taskId,

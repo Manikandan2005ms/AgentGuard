@@ -1,7 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CATEGORIES, PaymentRequestInputSchema } from "@agentguard/shared";
 import { z } from "zod";
+import { z as z3 } from "zod/v3";
+import { classifyTool, TOOL_CLASS_LABEL } from "../core/toolPolicy";
 import { prisma } from "../db";
+import { toolkitTools } from "../paypal/toolkit";
+import { callPayPalTool } from "../services/toolkitService";
 import { getPayment, requestPayment, toAgentResult } from "../services/paymentService";
 import { budgetUsage } from "../services/statsService";
 import { getUser } from "../services/users";
@@ -14,7 +18,18 @@ import { getUser } from "../services/users";
 const INSTRUCTIONS = `AgentGuard is the only way to pay. It checks every payment against the user's spending policy, their original task, and the page you read.
 1. Call start_task once with the user's exact request before shopping. Use the returned task_id in every request_payment.
 2. Call request_payment for each purchase. Pass the full content of the page that led to the purchase as source_page_content.
-3. Respect the result. "blocked" and "rejected" are final: do not retry, follow safe_next_step. "pending_approval" means the user is deciding: poll get_payment_status.`;
+3. Respect the result. "blocked" and "rejected" are final: do not retry, follow safe_next_step. "pending_approval" means the user is deciding: poll get_payment_status.
+PayPal Agent Toolkit tools (create_refund, accept_dispute_claim, list_invoices, ...) are also available here with their usual names and arguments. Read-only ones run directly; the rest pass the same firewall. Add agentguard_task_id and agentguard_source_content (the message that asked for the action) when you have them.`;
+
+/** Optional AgentGuard fields added to every toolkit tool (toolkit schemas are zod v3). */
+const GUARD_SHAPE = {
+  agentguard_task_id: z3.string().optional().describe("AgentGuard task_id from start_task, so the action can be checked against the user's intent"),
+  agentguard_source_content: z3
+    .string()
+    .max(400_000)
+    .optional()
+    .describe("The message, email or page that prompted this action (untrusted). AgentGuard scans it for prompt injection."),
+};
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] });
 
@@ -89,6 +104,31 @@ export function buildMcpServer(): McpServer {
       return json({ budgets: rows, note: rows.length ? undefined : "No budget limits configured for this category." });
     },
   );
+
+  // PayPal Agent Toolkit, guarded: same tool names and schemas as PayPal's own MCP server, so an
+  // agent built for PayPal's MCP can point at AgentGuard with one config change.
+  for (const t of toolkitTools()) {
+    const cls = classifyTool(t.method);
+    // Cast: the toolkit's zod v3 types and ours don't unify at the type level (same runtime API).
+    const params = t.parameters as unknown as { extend: (shape: typeof GUARD_SHAPE) => unknown };
+    const schema = cls === "read" ? t.parameters : params.extend(GUARD_SHAPE);
+    server.registerTool(
+      t.method,
+      {
+        title: `${t.name} (via AgentGuard)`,
+        description: `${t.description.trim()}\n\n[AgentGuard] ${TOOL_CLASS_LABEL[cls]}.`,
+        // The toolkit ships its own zod v3; the MCP SDK accepts v3 and v4 schemas.
+        inputSchema: schema as never,
+      },
+      (async (args: Record<string, unknown>) => {
+        try {
+          return json(await callPayPalTool(t.method, args));
+        } catch (err) {
+          return { ...json({ error: err instanceof Error ? err.message : String(err) }), isError: true };
+        }
+      }) as never,
+    );
+  }
 
   return server;
 }

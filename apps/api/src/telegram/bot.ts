@@ -35,17 +35,32 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const money = (p: PaymentRequestDTO) => `${p.currency === "USD" ? "$" : `${p.currency} `}${p.amount.toFixed(2)}`;
 
 function card(p: PaymentRequestDTO, header: string): string {
-  const lines = [
-    header,
-    "",
-    `🛒 <b>${esc(p.quantity > 1 ? `${p.quantity} × ${p.item}` : p.item)}</b>`,
-    `🏪 ${esc(p.merchantName ?? p.merchantDomain)} <i>(${esc(p.merchantDomain)})</i>`,
-    `💵 <b>${money(p)}</b>   ⚠️ Risk ${p.riskScore}/100`,
-  ];
+  const tool = p.kind === "paypal_tool";
+  const lines = tool
+    ? [
+        header,
+        "",
+        `🧰 <b>${esc(p.item)}</b>`,
+        `🔧 PayPal Agent Toolkit · <code>${esc(p.toolName ?? "")}</code>`,
+        `${p.amount ? `💵 <b>${money(p)}</b>   ` : ""}⚠️ Risk ${p.riskScore}/100`,
+      ]
+    : [
+        header,
+        "",
+        `🛒 <b>${esc(p.quantity > 1 ? `${p.quantity} × ${p.item}` : p.item)}</b>`,
+        `🏪 ${esc(p.merchantName ?? p.merchantDomain)} <i>(${esc(p.merchantDomain)})</i>`,
+        `💵 <b>${money(p)}</b>   ⚠️ Risk ${p.riskScore}/100`,
+      ];
   if (p.taskDescription) lines.push(`🤖 Task: “${esc(p.taskDescription)}”`);
   lines.push("", `💬 ${esc(p.explanation)}`);
   return lines.join("\n");
 }
+
+const TOOL_STATUS_LINE: Record<string, string> = {
+  PAID: "✅ <b>Approved: AgentGuard ran the PayPal action</b>",
+  VOIDED: "❌ <b>Rejected: the PayPal action was not run</b>",
+  FAILED: "⚠️ <b>PayPal action failed</b>",
+};
 
 const STATUS_LINE: Record<string, string> = {
   PAID: "✅ <b>Approved: payment captured</b>",
@@ -66,7 +81,12 @@ async function approvalNeeded(p: PaymentRequestDTO): Promise<number | null> {
     : [[{ text: "✅ Approve", callback_data: `approve:${p.id}` }, { text: "❌ Reject", callback_data: `reject:${p.id}` }]];
   const msg = await tg<{ message_id: number }>("sendMessage", {
     chat_id: chatId,
-    text: card(p, "🛡️ <b>AgentGuard: your agent wants to pay</b>\n<i>PayPal is holding the funds until you decide.</i>"),
+    text: card(
+      p,
+      p.kind === "paypal_tool"
+        ? "🛡️ <b>AgentGuard: your agent wants to run a PayPal action</b>\n<i>Nothing happens until you decide.</i>"
+        : "🛡️ <b>AgentGuard: your agent wants to pay</b>\n<i>PayPal is holding the funds until you decide.</i>",
+    ),
     parse_mode: "HTML",
     reply_markup: { inline_keyboard: buttons },
   });
@@ -76,7 +96,8 @@ async function approvalNeeded(p: PaymentRequestDTO): Promise<number | null> {
 async function resolved(p: PaymentRequestDTO, messageId: number | null): Promise<void> {
   const chatId = await linkedChatId();
   if (!chatId) return;
-  const text = card(p, STATUS_LINE[p.status] ?? `ℹ️ <b>${p.status}</b>`) + (p.decidedBy === "timeout" ? "\n\n⏱️ No answer in time." : "");
+  const lines = p.kind === "paypal_tool" ? TOOL_STATUS_LINE : STATUS_LINE;
+  const text = card(p, lines[p.status] ?? `ℹ️ <b>${p.status}</b>`) + (p.decidedBy === "timeout" ? "\n\n⏱️ No answer in time." : "");
   if (messageId) {
     await tg("editMessageText", { chat_id: chatId, message_id: messageId, text, parse_mode: "HTML" }).catch(() =>
       tg("sendMessage", { chat_id: chatId, text, parse_mode: "HTML" }),
@@ -95,7 +116,7 @@ async function blocked(p: PaymentRequestDTO): Promise<void> {
   const extra = evidence ? `\n\n🕵️ Hidden on the page:\n<code>${esc(evidence.snippet.slice(0, 220))}</code>` : "";
   await tg("sendMessage", {
     chat_id: chatId,
-    text: card(p, "⛔ <b>AgentGuard blocked a payment</b>") + extra,
+    text: card(p, p.kind === "paypal_tool" ? "⛔ <b>AgentGuard blocked a PayPal action</b>" : "⛔ <b>AgentGuard blocked a payment</b>") + extra,
     parse_mode: "HTML",
   });
 }

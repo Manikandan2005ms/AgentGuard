@@ -11,6 +11,7 @@ export async function budgetUsage(): Promise<BudgetUsageDTO[]> {
   const rows = await prisma.paymentRequest.findMany({
     where: {
       userId: user.id,
+      kind: "payment",
       createdAt: { gte: new Date(now - PERIOD_MS.month) },
       status: { in: ["PAID", "HELD", "PENDING"] },
       decision: { not: "BLOCK" },
@@ -31,11 +32,12 @@ export async function summary() {
   const since = new Date(Date.now() - 7 * 24 * 3600_000);
   const rows = await prisma.paymentRequest.findMany({
     where: { userId: user.id, createdAt: { gte: since } },
-    select: { decision: true, status: true, amount: true, riskScore: true, injectionDetected: true, createdAt: true, category: true },
+    select: { decision: true, status: true, amount: true, riskScore: true, injectionDetected: true, createdAt: true, category: true, kind: true },
   });
   const dayAgo = Date.now() - 24 * 3600_000;
   const today = rows.filter((r) => r.createdAt.getTime() >= dayAgo);
-  const paidSum = (rs: typeof rows) => round(rs.filter((r) => r.status === "PAID").reduce((s, r) => s + Number(r.amount), 0));
+  // Only purchases count as spend; toolkit actions (refunds etc.) are not money the agent spent.
+  const paidSum = (rs: typeof rows) => round(rs.filter((r) => r.status === "PAID" && r.kind === "payment").reduce((s, r) => s + Number(r.amount), 0));
 
   const byDay = new Map<string, { date: string; paid: number; blocked: number }>();
   for (let i = 6; i >= 0; i--) {
@@ -45,7 +47,7 @@ export async function summary() {
   for (const r of rows) {
     const d = byDay.get(r.createdAt.toISOString().slice(0, 10));
     if (!d) continue;
-    if (r.status === "PAID") d.paid = round(d.paid + Number(r.amount));
+    if (r.status === "PAID" && r.kind === "payment") d.paid = round(d.paid + Number(r.amount));
     if (r.decision === "BLOCK") d.blocked += 1;
   }
 

@@ -59,6 +59,11 @@ model Merchant {
 
 model PaymentRequest {
   id                String    @id @default(cuid())
+  /// "payment" = a guarded purchase; "paypal_tool" = a guarded PayPal Agent Toolkit call (refund, dispute, ...)
+  kind              String    @default("payment")
+  toolName          String?
+  toolArgs          Json?
+  toolResult        Json?
   userId            String
   user              User      @relation(fields: [userId], references: [id])
   taskId            String?

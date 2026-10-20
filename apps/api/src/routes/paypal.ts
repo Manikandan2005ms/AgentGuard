@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../db";
 import { env, paypalMode } from "../env";
+import { LIMITS } from "../lib/limits";
 import { gateway } from "../paypal/gateway";
 import type { PayPalWebhookEvent } from "../paypal/webhooks";
 import { handleOrderApproved } from "../services/paymentService";
@@ -10,7 +11,7 @@ import { getUser } from "../services/users";
 
 export async function paypalRoutes(app: FastifyInstance) {
   // ---- One-time onboarding: vault the user's PayPal wallet (README §8.3) ----
-  app.post("/api/paypal/vault/setup", async () => {
+  app.post("/api/paypal/vault/setup", { config: { rateLimit: LIMITS.admin } }, async () => {
     const user = await getUser();
     const { setupTokenId, approveUrl } = await gateway.createVaultSetup(
       `${env.PUBLIC_BASE_URL}/api/paypal/vault/return`,

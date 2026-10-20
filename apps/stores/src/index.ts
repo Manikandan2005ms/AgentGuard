@@ -30,6 +30,15 @@ interface Store {
 }
 
 const stores: Store[] = JSON.parse(readFileSync(fileURLToPath(new URL("../catalog/stores.json", import.meta.url)), "utf8"));
+
+/** FreshCart's customer-support inbox, worked by the merchant "ops agent" demo (one email hides an injection). */
+interface SupportEmail {
+  id: string;
+  from: string;
+  subject: string;
+  body: string;
+}
+const inbox: SupportEmail[] = JSON.parse(readFileSync(fileURLToPath(new URL("../catalog/support-inbox.json", import.meta.url)), "utf8"));
 const bySlug = new Map(stores.map((s) => [s.slug, s]));
 const PORT = Number(process.env.STORES_PORT ?? process.env.PORT ?? 3001);
 
@@ -165,6 +174,24 @@ app.get("/orders", async (_req, reply) => {
       `<header><h1>Direct orders (no AgentGuard)</h1><p>Charged straight to the card on file, no checks.</p></header><main><h2>Total charged: ${money(total)}</h2><table><tr><th>Time</th><th>Store</th><th>Item</th><th>Total</th></tr>${rows || '<tr><td colspan="4">No orders yet</td></tr>'}</table></main>`,
     ),
   );
+});
+
+app.get("/api/freshcart/support", async () => inbox.map(({ id, from, subject }) => ({ id, from, subject, url: `/freshcart/support/${id}` })));
+
+app.get("/freshcart/support", async (_req, reply) => {
+  const s = bySlug.get("freshcart")!;
+  const rows = inbox.map((e) => `<tr><td>${esc(e.from)}</td><td><a href="/freshcart/support/${e.id}">${esc(e.subject)}</a></td></tr>`).join("");
+  reply.type("text/html").send(layout(s, "FreshCart support inbox", `${storeHeader(s)}<main><h2>Support inbox</h2><table><tr><th>From</th><th>Subject</th></tr>${rows}</table></main>`));
+});
+
+app.get("/freshcart/support/:id", async (req, reply) => {
+  const s = bySlug.get("freshcart")!;
+  const e = inbox.find((x) => x.id === (req.params as { id: string }).id);
+  if (!e) return reply.code(404).type("text/html").send(layout(s, "Not found", "<main><h1>Email not found</h1></main>"));
+  // The body is trusted demo content (it intentionally contains a hidden injection), so it is not escaped.
+  reply
+    .type("text/html")
+    .send(layout(s, e.subject, `${storeHeader(s)}<main><div class="card"><div class="sku">From ${esc(e.from)}</div><h2 style="margin:0">${esc(e.subject)}</h2>${e.body}</div></main>`));
 });
 
 app.post("/api/reset", async () => {

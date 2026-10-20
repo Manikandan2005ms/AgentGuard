@@ -8,6 +8,7 @@ import { KillSwitch } from "./KillSwitch";
 
 const NAV = [
   { href: "/", label: "Live" },
+  { href: "/try", label: "▶ Try it" },
   { href: "/policies", label: "Policies" },
   { href: "/audit", label: "Audit log" },
   { href: "/budgets", label: "Budgets" },

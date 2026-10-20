@@ -3,6 +3,8 @@
 # (Render shows the public URLs once services exist), then redeploy.
 databases:
   - name: agentguard-db
+    # Free Render Postgres expires 30 days after creation (inside the Dec 1–15 judging window).
+    # Switch to a paid plan before submitting, or remove this block and point DATABASE_URL elsewhere.
     plan: free
     databaseName: agentguard
     user: agentguard
@@ -60,6 +62,12 @@ services:
         generateValue: true
       - key: AGENT_API_KEY
         sync: false
+      - key: PAYPAL_TOOLKIT_TOOLS
+        value: all
+      - key: LLM_DAILY_CALL_LIMIT
+        value: "1500"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "300"
 
   - type: web
     name: agentguard-dashboard

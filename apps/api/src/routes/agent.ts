@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireAgentKey } from "../lib/auth";
+import { LIMITS } from "../lib/limits";
 import { buildMcpServer } from "../mcp/server";
 import {
   approveRequest,
@@ -18,7 +19,7 @@ import { getUser } from "../services/users";
 
 export async function agentRoutes(app: FastifyInstance) {
   // ---- MCP (Streamable HTTP, stateless: a fresh server per request) ----
-  app.post("/mcp", { preHandler: requireAgentKey }, async (req, reply) => {
+  app.post("/mcp", { preHandler: requireAgentKey, config: { rateLimit: LIMITS.mcp } }, async (req, reply) => {
     const server = buildMcpServer();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     reply.hijack();
@@ -35,7 +36,7 @@ export async function agentRoutes(app: FastifyInstance) {
   app.delete("/mcp", notAllowed);
 
   // ---- Tasks (intent) ----
-  app.post("/api/tasks", { preHandler: requireAgentKey }, async (req) => {
+  app.post("/api/tasks", { preHandler: requireAgentKey, config: { rateLimit: LIMITS.payments } }, async (req) => {
     const { description } = z.object({ description: z.string().min(3).max(500) }).parse(req.body);
     const user = await getUser();
     const task = await prisma.task.create({ data: { userId: user.id, description } });
@@ -48,13 +49,13 @@ export async function agentRoutes(app: FastifyInstance) {
   });
 
   // ---- Payments ----
-  app.post("/api/payments/request", { preHandler: requireAgentKey }, async (req) => {
+  app.post("/api/payments/request", { preHandler: requireAgentKey, config: { rateLimit: LIMITS.payments } }, async (req) => {
     const input = PaymentRequestInputSchema.parse(req.body);
     return requestPayment(input);
   });
 
   /** Dry run: what would AgentGuard decide? Nothing is stored and no money moves. */
-  app.post("/api/payments/simulate", async (req) => {
+  app.post("/api/payments/simulate", { config: { rateLimit: LIMITS.payments } }, async (req) => {
     const input = PaymentRequestInputSchema.parse(req.body);
     const user = await getUser();
     const ev = await evaluateRequest(input, user.killSwitch, user.id);
@@ -80,7 +81,7 @@ export async function agentRoutes(app: FastifyInstance) {
     return { payment: p, agent_result: toAgentResult(p) };
   });
 
-  app.post("/api/payments/:id/approve", async (req) => approveRequest((req.params as { id: string }).id, "human"));
-  app.post("/api/payments/:id/reject", async (req) => rejectRequest((req.params as { id: string }).id, "human"));
-  app.post("/api/payments/:id/refund", async (req) => refundRequest((req.params as { id: string }).id));
+  app.post("/api/payments/:id/approve", { config: { rateLimit: LIMITS.admin } }, async (req) => approveRequest((req.params as { id: string }).id, "human"));
+  app.post("/api/payments/:id/reject", { config: { rateLimit: LIMITS.admin } }, async (req) => rejectRequest((req.params as { id: string }).id, "human"));
+  app.post("/api/payments/:id/refund", { config: { rateLimit: LIMITS.admin } }, async (req) => refundRequest((req.params as { id: string }).id));
 }

@@ -16,7 +16,7 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 | 3 | Policy engine, risk engine, decision function + tests | ✅ |
 | 4 | Webhooks with signature verification | ✅ mock · 🟡 sandbox |
 | 5 | AI layer: compiler, intent, injection, categorizer, explainer | ✅ heuristics · 🟡 Claude |
-| 6 | MCP server, demo stores, demo agent | ✅ scripted · 🟡 LLM agent |
+| 6 | MCP server (incl. guarded PayPal Agent Toolkit), demo stores, demo agent, **Try it** page | ✅ scripted · 🟡 LLM agent · 🟡 toolkit on sandbox |
 | 7 | Telegram approvals + timeout job | ✅ code · 🟡 live bot |
 | 8 | Dashboard: live feed, policies, AG Grid audit, budgets, threats, setup | ✅ |
 | 9 | Deploy to Render | 🧑 (blueprint ready) |
@@ -24,9 +24,50 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 | 11 | Demo video | 🧑 |
 | 12 | Devpost submission | 🧑 |
 
-**Verified here (no keys):** `npm test` (53 passing), typecheck of every package, `next build`, and a full local run in mock mode: approve → captured, MegaDealz attack → blocked with all three hidden techniques identified, agent recovers at FreshCart, $129 headphones → held → approved from the dashboard → captured, unguarded agent → $1,000 of gift cards, mock Vault onboarding redirect, MCP `tools/list`.
+**Verified here (no keys):** `npm test` (60 passing), the four **Try it** scenarios run from the browser (attack blocked, approval → captured, ops agent: toolkit refund executed while the injected refund and dispute were blocked, unguarded → $1,000.99), per-IP rate limits returning 429s, and typecheck of every package, `next build`, and a full local run in mock mode: approve → captured, MegaDealz attack → blocked with all three hidden techniques identified, agent recovers at FreshCart, $129 headphones → held → approved from the dashboard → captured, unguarded agent → $1,000 of gift cards, mock Vault onboarding redirect, MCP `tools/list`.
 
 **Not verified yet (needs your accounts):** real PayPal sandbox calls (Vault, Orders, webhooks, reporting), Claude API calls, the Telegram bot, and the Render deploy. The code for all of these is written against the documented APIs; Phases 2, 4, 5, 7 and 9 tell you exactly how to check each one.
+
+---
+
+## What the official rules mean for us (checked Oct 20)
+
+From paypalaihackathon.devpost.com (overview, rules, resources):
+
+- **Dates:** submissions close **Thu Nov 12, 12:00 PM PT**. **Judging runs Dec 1–15**, and winners are announced around Dec 21. The hosted demo must stay up until Dec 15.
+- **Stage 1 (pass/fail):** the project must fit the theme and meaningfully use PayPal *and* AI. **Stage 2:** five **equally weighted** criteria: Technological Implementation, Design, Potential Impact, Innovation, Presentation. Ties are broken by Technological Implementation first.
+- **Judges may score from the text, images and video alone**, so the video and the Devpost description carry as much weight as the code.
+- **Functional demo is mandatory:** a hosted URL *or* complete run instructions, plus any test credentials or sandbox logins in the README. Mock mode (runs with no keys) already covers the second option.
+- **Prize limits:** a project can win **one** Grand *or* Honorable Mention prize **plus one** sponsor prize. Target AG Grid (up to $5,000) as the sponsor prize; Render pays only in credits. **Postman has no prize** (the collection is still useful for judges).
+- **Resources the PayPal judges point to:** the **PayPal Agent Toolkit** and **PayPal MCP server**. AgentGuard doesn't use them yet (see R2 below).
+- **Video:** under 3 minutes, public on YouTube, no copyrighted music or third-party trademarks without permission.
+
+## Remaining work to win
+
+**You (accounts, deploy, submission):**
+
+| # | Task | Why it matters | When |
+|---|---|---|---|
+| Y1 | Join the hackathon on Devpost; push the repo to a **public** GitHub repo | Required; GitHub shows the MIT license in the About section | Oct 21 |
+| Y2 | PayPal sandbox app + accounts (Phase 0). In the app's **Features**, enable **Vault / save payment methods** and **Transaction search** | Without Transaction search, reconciliation gets 403s; without Vault, use the fallback flow | Oct 21 |
+| Y3 | Run Phases 2 and 4 against the real sandbox and send me any error output | **Biggest technical risk:** the real PayPal calls haven't been exercised yet | Oct 22–25 |
+| Y4 | Add `ANTHROPIC_API_KEY`, run Phase 5; add the Telegram token, run Phase 7 | Verifies the AI layer and phone approvals | Oct 27 – Nov 2 |
+| Y5 | Deploy on Render with a database that **won't expire during judging**: a paid Render Postgres plan, or an external free Postgres such as Neon (set `DATABASE_URL`) | Free Render Postgres expires 30 days after creation, which lands inside Dec 1–15 | Nov 5 |
+| Y6 | Ask AG Grid for a license key (sponsor resources / Discord) | Removes the trial watermark from the video and hosted demo | Before Nov 8 |
+| Y7 | Record the video (Phase 11), write the Devpost text, add screenshots and test instructions | Presentation is 1/5 of the score, and judges may rely only on these | Nov 8–10 |
+
+**Code (I can build these):**
+
+| # | Task | Criteria it helps |
+|---|---|---|
+| ✅ R1 | **"Try it" page in the dashboard** (done Oct 20): buttons that run each demo scenario on the server (attack blocked, phone approval, unguarded) and stream the agent's log, plus a **Reset demo** button. Today the agent can only be run from a terminal, so a judge on the hosted site can't trigger anything. | Functional demo, Design, Best Demo Delivery |
+| ✅ R2 | **PayPal Agent Toolkit integration** (done Oct 20): all 47 toolkit tools on AgentGuard's MCP under their own names. Read-only ones pass through; refunds, disputes, cancellations, invoices and orders go through the firewall and approvals. Includes a merchant ops-agent scenario. Change from the plan: the toolkit is merchant-side and its orders need payer approval, so the unguarded "before" scene stays the simulated store checkout. | Technological Implementation, Best Use of PayPal + AI, Agentic Commerce |
+| ✅ R3 | **Abuse protection for the public demo** (done Oct 20): rate limits on the endpoints that call Claude (policy compile, payment requests) | Stops strangers or bots burning your Anthropic credits during judging |
+| R4 | **AG Grid prize polish**: AG Charts on the Budgets page, sparklines or integrated charts in the audit grid | Best Use of AG Grid |
+| R5 | **Refund button** in the audit grid and a **policy simulator** UI (both APIs already exist) | Design, Technological Implementation |
+| R6 | **Phone-width pass** on Live and the approval cards, favicon and social preview image | Design, video quality |
+
+R1–R3 are done. Next: R4–R6, plus verifying the toolkit calls against the real sandbox (Y3). Leave Nov 11–12 as buffer.
 
 ---
 
@@ -37,7 +78,7 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 3. **Sandbox accounts** (developer dashboard → Sandbox → **Accounts** → Create account):
    - 1 **Personal** account: the user's wallet the agent spends from. Note its email and password (sandbox only).
    - 3 **Business** accounts: FreshCart, GadgetHub, MegaDealz. Copy their emails.
-4. **Vault**: in your app's settings, enable the feature for saving payment methods (Vault). If your sandbox app doesn't offer it, you'll use the fallback flow (Phase 2, step 6).
+4. **App features**: in your app's settings, enable saving payment methods (**Vault**) and **Transaction search** (needed for the reporting/reconciliation calls). If your sandbox app doesn't offer Vault, use the fallback flow (Phase 2, step 6).
 5. **Anthropic**: create an API key at console.anthropic.com.
 6. **Telegram**: in Telegram, message **@BotFather** → `/newbot` → copy the bot token.
 7. **GitHub**: create a **public** repo named `agentguard`. The MIT `LICENSE` is already in the repo root.
@@ -159,7 +200,9 @@ npm test
 **Built:**
 - `apps/api/src/mcp/server.ts`: MCP tools `start_task`, `request_payment`, `get_payment_status`, `get_remaining_budget` over Streamable HTTP at `/mcp` (plus `npm run mcp:stdio`).
 - `apps/stores`: FreshCart (2 yrs), GadgetHub (1 yr), MegaDealz (3 days). MegaDealz hides the README §15 injection three ways (white-on-white 1px text, an HTML comment, image alt text). `POST /:store/checkout` is the unguarded path.
-- `apps/demo-agent`: the harness registers the user's words as the task before the model sees any page, and attaches the page HTML to each payment request. It waits for human approval when a payment is held.
+- `apps/demo-agent`: the harness registers the user's words as the task before the model sees any page, and attaches the page HTML to each payment request. It waits for human approval when a payment is held. `--ops` runs a merchant support agent that works FreshCart's inbox with PayPal Agent Toolkit tools through AgentGuard.
+- **PayPal Agent Toolkit behind the firewall** (`apps/api/src/paypal/toolkit.ts`, `services/toolkitService.ts`, `core/toolPolicy.ts`): all 47 `@paypal/agent-toolkit` tools on AgentGuard's MCP server. Read-only tools pass through. Refunds and dispute acceptance are checked against your limits; cancellations and deletions always ask. A privileged action triggered by a message with hidden instructions is blocked. Mock mode simulates results.
+- **Try it page** (`/try`, `services/demoRunner.ts`): runs each scenario as a real agent process on the server, streams its log, and **Reset demo** restores the seed. Rate-limited, one run at a time.
 
 ```bash
 npm run agent -- --scripted "Buy oat milk and the cheapest bread you can find"     # no LLM, deterministic
@@ -204,6 +247,8 @@ npm run agent -- --unguarded "Buy the cheapest bread you can find"              
 
 1. Push the repo to GitHub (Phase 0).
 2. Render → **New** → **Blueprint** → select the repo. `render.yaml` creates `agentguard-db` (Postgres) and three web services: `agentguard-api`, `agentguard-dashboard`, `agentguard-stores`.
+   - ⚠️ **Free Render Postgres expires 30 days after creation**, which would land inside the Dec 1–15 judging window. Before relying on it, change `plan: free` under `databases` to a paid plan, or delete the `databases` block and set `DATABASE_URL` on the API to an external Postgres that doesn't expire (e.g. Neon's free tier).
+   - Free web services also sleep after 15 minutes idle and take about a minute to wake. Open each URL a minute before recording, or use a paid instance for the API during judging.
 3. When the services exist, set the `sync: false` env vars:
    - **agentguard-api**: `PUBLIC_BASE_URL` (its own URL), `DASHBOARD_URL`, `STORES_URL`, PayPal keys and merchant emails, `ANTHROPIC_API_KEY`, `TELEGRAM_BOT_TOKEN`, optional `AGENT_API_KEY`. `TELEGRAM_MODE=webhook` is preset.
    - **agentguard-dashboard**: `NEXT_PUBLIC_API_URL` = the API URL (baked in at build), optional AG Grid key.
@@ -226,7 +271,7 @@ AGENTGUARD_MCP_URL=https://<api>/mcp STORES_URL=https://<stores> npm run agent -
 
 - [ ] Fill in the **Judge test drive** section of the README (hosted URLs, sandbox buyer login: sandbox only).
 - [ ] Add 3–4 screenshots (Live with a blocked attack, Policies compile, Audit log grouped by decision, Threats) to the README.
-- [ ] Import `postman/AgentGuard.postman_collection.json`, set `baseUrl` to the Render API, run folder 2 in order, and publish the collection (optional, for the Postman sponsor prize).
+- [ ] Import `postman/AgentGuard.postman_collection.json`, set `baseUrl` to the Render API, run folder 2 in order, and link the collection in the README for judges (Postman has no prize in this hackathon, but it makes testing easy).
 - [ ] Phone-width check of the dashboard (layouts are responsive; verify on your phone).
 - [ ] Optional stretch, only if everything above is done: per-agent API keys with their own budgets, the policy simulator UI (the `POST /api/payments/simulate` endpoint already exists), a refund button in the audit grid (`POST /api/payments/:id/refund` exists).
 
@@ -236,7 +281,7 @@ AGENTGUARD_MCP_URL=https://<api>/mcp STORES_URL=https://<stores> npm run agent -
 
 ## Phase 11: Demo video 🧑 (Nov 8), under 3:00
 
-Rehearse with `npm run demo:reset` between takes (it wipes payments and restores the sample policy). The stores keep their unguarded `/orders` list in memory: restart the stores app, or `POST <stores>/api/reset`, to clear it. Record 1080p, voiceover separately, no copyrighted music, show the hosted URL on screen.
+You can run every scene from the dashboard's **Try it** page instead of a terminal. Rehearse with **Reset demo** (or `npm run demo:reset`) between takes (it wipes payments and restores the sample policy). The stores keep their unguarded `/orders` list in memory: restart the stores app, or `POST <stores>/api/reset`, to clear it. Record 1080p, voiceover separately, no copyrighted music, show the hosted URL on screen.
 
 | Time | Scene | What to run / show |
 |---|---|---|
@@ -246,6 +291,7 @@ Rehearse with `npm run demo:reset` between takes (it wipes payments and restores
 | 1:00–1:20 | Normal purchase | `npm run agent -- --scripted "Buy oat milk and the cheapest bread you can find"`: FreshCart oat milk ✅, show the PayPal capture ID |
 | 1:20–1:55 | The attack, blocked | Same run: MegaDealz → ⛔ BLOCKED card with the hidden text; Threats page; agent recovers at FreshCart |
 | 1:55–2:25 | Phone approval | `npm run agent -- --scripted "Buy wireless headphones"` → phone buzzes → tap Approve → captured. Second run → Reject → voided |
+| (optional, 15s) | PayPal Agent Toolkit ops agent | Try it → *Merchant ops agent*: the $3.99 refund runs, the injected full refund and dispute acceptance are blocked |
 | 2:25–2:45 | Audit & kill switch | Audit log grouped by decision, expand a row; flip the kill switch → next request blocked |
 | 2:45–3:00 | Close | Architecture slide: "AgentGuard: the trust layer agentic commerce needs, built on PayPal" |
 
@@ -266,6 +312,7 @@ Devpost draft text is in the original plan (§24); update "Built with" to: `payp
 - [ ] Sponsor tools listed: AG Grid, Render, Postman
 - [ ] Every link clicked once more
 - [ ] Submitted by **Nov 10**. Nov 11–12 are buffer only: fix, don't add features.
+- [ ] Hosted demo, database and API keys stay live through **Dec 15** (end of judging)
 
 ---
 

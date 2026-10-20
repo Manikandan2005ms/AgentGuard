@@ -140,7 +140,9 @@ export default function SetupPage() {
         <h2 className="text-lg font-semibold">Connect any MCP agent</h2>
         <p className="mt-1 text-sm text-muted">
           AgentGuard is a “guarded PayPal” MCP server. Point your agent at it instead of calling PayPal directly; every money-moving call passes the
-          firewall first. Tools: <code>start_task</code>, <code>request_payment</code>, <code>get_payment_status</code>, <code>get_remaining_budget</code>.
+          firewall first. Tools: <code>start_task</code>, <code>request_payment</code>, <code>get_payment_status</code>, <code>get_remaining_budget</code>, plus PayPal&apos;s
+          own <b>Agent Toolkit</b> tools under their usual names (<code>create_refund</code>, <code>accept_dispute_claim</code>, <code>list_invoices</code>, …). Read-only ones
+          pass straight through; anything that moves money or changes data is checked by your policy and can wait for your approval.
         </p>
         <pre className="mt-3 overflow-auto rounded-lg bg-ink/70 p-3 font-mono text-xs text-cyan-200">{mcpConfig}</pre>
         <p className="mt-3 text-sm text-muted">Or run the demo agent against the demo stores ({me?.urls.stores}):</p>

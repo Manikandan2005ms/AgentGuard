@@ -35,11 +35,27 @@ export interface StructuredCall<T> {
 
 export type StructuredResult<T> = { ok: true; data: T; model: string } | { ok: false; error: string };
 
+// Daily cap on model calls, so a public demo can't run up an unbounded bill (R3).
+// Hitting it counts as a failed AI check, which fails safe to ASK_HUMAN.
+const usage = { day: "", calls: 0 };
+function takeBudget(): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  if (usage.day !== today) {
+    usage.day = today;
+    usage.calls = 0;
+  }
+  if (usage.calls >= env.LLM_DAILY_CALL_LIMIT) return false;
+  usage.calls++;
+  return true;
+}
+
 export const llmInfo = () => ({
   enabled: llmEnabled,
   provider: llmEnabled ? "anthropic" : "none",
   model: env.LLM_MODEL,
   fastModel: env.LLM_FAST_MODEL,
+  callsToday: usage.day === new Date().toISOString().slice(0, 10) ? usage.calls : 0,
+  dailyCallLimit: env.LLM_DAILY_CALL_LIMIT,
 });
 
 /**
@@ -76,6 +92,7 @@ export async function structured<T>(call: StructuredCall<T>): Promise<Structured
   let lastError = "unknown error";
 
   for (let attempt = 1; attempt <= 2; attempt++) {
+    if (!takeBudget()) return { ok: false, error: `daily AI call limit (${env.LLM_DAILY_CALL_LIMIT}) reached` };
     try {
       const res = await parseOnce(call, model);
       if (res.stop_reason === "refusal") return { ok: false, error: "model declined the request" };

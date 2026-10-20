@@ -3,7 +3,7 @@
 import type { PaymentRequestDTO } from "@agentguard/shared";
 import { useState } from "react";
 import { api, money, timeAgo } from "@/lib/api";
-import { DecisionPill, StatusPill, decisionColor } from "./Pills";
+import { DecisionPill, StatusPill, ToolBadge, decisionColor } from "./Pills";
 import { RiskGauge } from "./RiskGauge";
 
 export function PaymentCard({ p, fresh }: { p: PaymentRequestDTO; fresh?: boolean }) {
@@ -36,7 +36,8 @@ export function PaymentCard({ p, fresh }: { p: PaymentRequestDTO; fresh?: boolea
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <DecisionPill decision={p.decision} />
-            <StatusPill status={p.status} />
+            <StatusPill status={p.status} kind={p.kind} />
+            {p.kind === "paypal_tool" && p.toolName && <ToolBadge name={p.toolName} />}
             {p.injectionDetected && (
               <span className="rounded-full border border-bad/40 bg-bad/10 px-2 py-0.5 text-xs font-semibold text-bad">⚠ prompt injection</span>
             )}
@@ -47,8 +48,14 @@ export function PaymentCard({ p, fresh }: { p: PaymentRequestDTO; fresh?: boolea
             {p.item}
           </h3>
           <p className="text-sm text-muted">
-            {p.merchantName ?? p.merchantDomain} · <span className="font-mono">{p.merchantDomain}</span>
-            {p.category ? ` · ${p.category.replace("_", " ")}` : ""}
+            {p.kind === "paypal_tool" ? (
+              <>Ops agent action on your PayPal account{p.category ? ` · ${p.category.replace("_", " ")}` : ""}</>
+            ) : (
+              <>
+                {p.merchantName ?? p.merchantDomain} · <span className="font-mono">{p.merchantDomain}</span>
+                {p.category ? ` · ${p.category.replace("_", " ")}` : ""}
+              </>
+            )}
           </p>
           <p className="mt-2 text-sm">{p.explanation}</p>
           {p.taskDescription && <p className="mt-1 text-xs text-muted">Task: “{p.taskDescription}”</p>}
@@ -60,19 +67,23 @@ export function PaymentCard({ p, fresh }: { p: PaymentRequestDTO; fresh?: boolea
           {p.failureReason && <p className="mt-2 text-xs text-bad">{p.failureReason}</p>}
         </div>
         <div className="text-right">
-          <div className="text-lg font-bold">{money(p.amount, p.currency)}</div>
+          <div className="text-lg font-bold">{p.kind === "paypal_tool" && p.amount === 0 ? "–" : money(p.amount, p.currency)}</div>
           {p.paypalCaptureId && <div className="mt-1 font-mono text-[10px] text-muted">cap {p.paypalCaptureId.slice(-10)}</div>}
         </div>
       </div>
 
-      {(p.status === "HELD" || (p.status === "PENDING" && p.decision !== "BLOCK")) && (
+      {(p.status === "HELD" || (p.status === "PENDING" && p.decision !== "BLOCK" && p.kind !== "paypal_tool")) && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
           <span className="mr-auto text-xs text-warn">
-            {p.status === "HELD" ? "PayPal is holding the funds until you decide." : "Waiting for approval on PayPal."}
+            {p.kind === "paypal_tool"
+              ? "AgentGuard runs this PayPal action only if you approve."
+              : p.status === "HELD"
+                ? "PayPal is holding the funds until you decide."
+                : "Waiting for approval on PayPal."}
           </span>
           {p.status === "HELD" ? (
             <button className="btn btn-ok" disabled={!!busy} onClick={() => act("approve")}>
-              {busy === "approve" ? "Capturing…" : "✓ Approve"}
+              {busy === "approve" ? (p.kind === "paypal_tool" ? "Running…" : "Capturing…") : "✓ Approve"}
             </button>
           ) : (
             p.approveUrl && (

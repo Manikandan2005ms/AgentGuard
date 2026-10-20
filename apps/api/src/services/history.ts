@@ -19,12 +19,12 @@ export interface SpendingHistory extends PolicyHistory {
 export async function loadHistory(userId: string, merchantId: string | null, policy: Policy, now: Date): Promise<SpendingHistory> {
   const since = new Date(now.getTime() - 90 * 24 * 3600_000);
   const rows = await prisma.paymentRequest.findMany({
-    where: { userId, createdAt: { gte: since }, status: { in: [...COMMITTED_STATUSES] }, decision: { not: "BLOCK" } },
+    where: { userId, kind: "payment", createdAt: { gte: since }, status: { in: [...COMMITTED_STATUSES] }, decision: { not: "BLOCK" } },
     select: { amount: true, category: true, createdAt: true, status: true, merchantId: true },
   });
 
   const merchantPaidBefore = merchantId
-    ? (await prisma.paymentRequest.count({ where: { userId, merchantId, status: "PAID" } })) > 0
+    ? (await prisma.paymentRequest.count({ where: { userId, merchantId, kind: "payment", status: "PAID" } })) > 0
     : false;
 
   const windowMs = (policy.velocity?.window_minutes ?? 60) * 60_000;

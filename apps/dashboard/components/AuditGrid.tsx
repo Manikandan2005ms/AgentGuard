@@ -66,7 +66,7 @@ type Row = PaymentRequestDTO;
 type Cell<V = unknown> = ICellRendererParams<Row, V>;
 
 const DecisionCell = (p: Cell<Row["decision"]>) => (p.data && p.value ? <DecisionPill decision={p.value} /> : <span>{String(p.value ?? "")}</span>);
-const StatusCell = (p: Cell<Row["status"]>) => (p.data && p.value ? <StatusPill status={p.value} /> : <span>{String(p.value ?? "")}</span>);
+const StatusCell = (p: Cell<Row["status"]>) => (p.data && p.value ? <StatusPill status={p.value} kind={p.data.kind} /> : <span>{String(p.value ?? "")}</span>);
 
 function RiskCell(p: Cell<number>) {
   if (p.value == null) return null;
@@ -169,6 +169,14 @@ function DetailRow({ data }: { data?: Row }) {
           <dt className="text-muted">decided by</dt>
           <dd>{data.decidedBy}</dd>
         </dl>
+        {data.kind === "paypal_tool" && (
+          <div className="mt-3">
+            <div className="font-semibold text-sky-300">PayPal Agent Toolkit · {data.toolName}</div>
+            <pre className="mt-1 max-h-40 overflow-auto rounded border border-line bg-ink/70 p-1.5 font-mono text-[11px]">
+              {JSON.stringify({ args: data.toolArgs, result: data.toolResult }, null, 2)}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -184,6 +192,7 @@ const GROUPS = [
   { label: "Decision", cols: ["decision"] },
   { label: "Status", cols: ["status"] },
   { label: "Category", cols: ["category"] },
+  { label: "Type", cols: ["kind"] },
 ];
 
 export default function AuditGrid() {
@@ -226,7 +235,22 @@ export default function AuditGrid() {
         width: 165,
       },
       { colId: "task", field: "taskDescription", headerName: "Agent task", width: 220, filter: "agTextColumnFilter", enableRowGroup: true },
-      { colId: "merchant", field: "merchantName", headerName: "Merchant", width: 130, filter: "agSetColumnFilter", enableRowGroup: true },
+      {
+        colId: "kind",
+        headerName: "Type",
+        width: 150,
+        valueGetter: (p) => (p.data ? (p.data.kind === "paypal_tool" ? `toolkit: ${p.data.toolName}` : "payment") : null),
+        filter: "agSetColumnFilter",
+        enableRowGroup: true,
+      },
+      {
+        colId: "merchant",
+        headerName: "Merchant",
+        width: 130,
+        valueGetter: (p) => (p.data ? (p.data.kind === "paypal_tool" ? "PayPal account" : (p.data.merchantName ?? p.data.merchantDomain)) : null),
+        filter: "agSetColumnFilter",
+        enableRowGroup: true,
+      },
       { field: "item", headerName: "Item", width: 220, filter: "agTextColumnFilter" },
       { field: "quantity", headerName: "Qty", width: 70, filter: "agNumberColumnFilter" },
       { colId: "category", field: "category", headerName: "Category", width: 120, filter: "agSetColumnFilter", enableRowGroup: true },

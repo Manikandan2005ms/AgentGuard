@@ -77,7 +77,11 @@ export default function LivePage() {
       {items && items.length === 0 && (
         <div className="card p-8 text-center">
           <p className="text-lg font-semibold">No agent payments yet</p>
-          <p className="mt-1 text-sm text-muted">Run the demo agent and watch requests appear here:</p>
+          <p className="mt-2 text-sm text-muted">Run a scenario from the browser:</p>
+          <Link href="/try" className="btn btn-primary mt-2">
+            ▶ Try it
+          </Link>
+          <p className="mt-4 text-sm text-muted">or run the demo agent from a terminal:</p>
           <pre className="mx-auto mt-3 inline-block rounded-lg bg-panel-2 px-3 py-2 text-left font-mono text-sm">
             npm run agent -- &quot;Buy oat milk and the cheapest bread you can find&quot;
           </pre>

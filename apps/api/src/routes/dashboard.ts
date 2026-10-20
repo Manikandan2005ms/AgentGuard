@@ -7,6 +7,7 @@ import { prisma } from "../db";
 import { env, paypalMode, telegramEnabled } from "../env";
 import { publish, subscribe } from "../events";
 import { reconcileJob } from "../jobs";
+import { LIMITS } from "../lib/limits";
 import { toDTO, withRelations } from "../services/dto";
 import { activatePolicy, activePolicyView, compileAndSave, listPolicies } from "../services/policyService";
 import { budgetUsage, summary } from "../services/statsService";
@@ -39,11 +40,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
   });
 
   // ---- Policies ----
-  app.post("/api/policies/compile", async (req) => {
+  app.post("/api/policies/compile", { config: { rateLimit: LIMITS.aiHeavy } }, async (req) => {
     const { rawText } = z.object({ rawText: z.string().min(3).max(4000) }).parse(req.body);
     return compileAndSave(rawText);
   });
-  app.post("/api/policies/:id/activate", async (req, reply) => {
+  app.post("/api/policies/:id/activate", { config: { rateLimit: LIMITS.admin } }, async (req, reply) => {
     const p = await activatePolicy((req.params as { id: string }).id);
     return p ?? reply.code(404).send({ error: "Policy not found" });
   });
@@ -91,7 +92,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
 
   // ---- Kill switch ----
   app.get("/api/killswitch", async () => ({ enabled: (await getUser()).killSwitch }));
-  app.post("/api/killswitch", async (req) => {
+  app.post("/api/killswitch", { config: { rateLimit: LIMITS.admin } }, async (req) => {
     const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
     const user = await getUser();
     await prisma.user.update({ where: { id: user.id }, data: { killSwitch: enabled } });
@@ -99,7 +100,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
     return { enabled };
   });
 
-  app.post("/api/paypal/reconcile", async () => ({ reconciled: await reconcileJob() }));
+  app.post("/api/paypal/reconcile", { config: { rateLimit: LIMITS.admin } }, async () => ({ reconciled: await reconcileJob() }));
 
   // ---- Live feed (Server-Sent Events) ----
   app.get("/api/events", async (req, reply) => {

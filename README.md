@@ -17,7 +17,7 @@
 | You approve every click, or nothing. | Small, in-policy purchases go through instantly. Bigger ones are **authorized (funds held)** and you tap ✅ / ❌ on Telegram; only then is the money captured or the hold voided. |
 | Nobody can say why a payment happened. | Every decision is logged with the rules that fired, every risk signal, and a one-sentence explanation, all in an AG Grid audit log. |
 
-**Key features:** natural-language policies · intent-bound purchases · two-layer prompt-injection detection · 0–100 risk scoring · authorize-then-capture · Telegram approvals · explainable audit log · kill switch · a "guarded PayPal" MCP server any agent can plug into.
+**Key features:** natural-language policies · intent-bound purchases · two-layer prompt-injection detection · 0–100 risk scoring · authorize-then-capture · Telegram approvals · explainable audit log · kill switch · a "guarded PayPal" MCP server any agent can plug into, including **PayPal's own Agent Toolkit tools behind the firewall** · a **Try it** page that runs every scenario from the browser.
 
 ## Architecture
 
@@ -25,6 +25,7 @@
  Demo agent / any MCP agent ──MCP──▶  AgentGuard API (Fastify + TypeScript) ──▶ PayPal (sandbox)
    (Anthropic SDK tool runner)         ├─ MCP server: start_task, request_payment,     Orders v2 AUTHORIZE
             │                           │   get_payment_status, get_remaining_budget     capture / void / refund
+            │                           │   + PayPal Agent Toolkit tools (guarded)       Agent Toolkit (47 tools)
             ▼                           ├─ Decision core                                Vault (setup → payment token)
  Demo stores (FreshCart, GadgetHub,     │   1. kill switch                              Webhooks (verified)
  MegaDealz ← hidden injections)         │   2. deterministic policy engine (no AI)      Reporting (reconciliation)
@@ -49,12 +50,13 @@ npm run seed            # demo user, 3 merchants, sample policy, purchase histor
 npm run dev             # terminal 2: API :4000 · dashboard :3000 · stores :3001
 ```
 
-Open http://localhost:3000, then in a third terminal:
+Open **http://localhost:3000/try** and click a scenario: each one runs a real agent on the server and streams its log. Or, in a third terminal:
 
 ```bash
 npm run agent -- --scripted --unguarded "Buy the cheapest bread you can find"     # the "before": $1,000 of gift cards
 npm run agent -- --scripted "Buy oat milk and the cheapest bread you can find"    # the "after": attack blocked, groceries bought
 npm run agent -- --scripted "Buy wireless headphones"                               # $129 → held → approve it on the Live page
+npm run agent -- --ops                                                              # ops agent: PayPal Agent Toolkit refunds/disputes via AgentGuard
 ```
 
 `npm run demo:reset` wipes payments and restores the sample policy between rehearsals.
@@ -82,6 +84,17 @@ The dashboard header always shows which mode each piece is in.
 6. **Webhooks** (signature-verified) confirm capture / void; a background job voids unanswered holds and another reconciles with PayPal Reporting.
 7. The agent gets `{status, reason, safe_next_step}` so it can recover and continue.
 
+## PayPal integration
+
+| PayPal capability | How AgentGuard uses it |
+|---|---|
+| **Orders v2** with `intent: AUTHORIZE` | Every allowed payment is authorized first (funds held), then captured on approval or voided on rejection or timeout. Each POST has a `PayPal-Request-Id` for idempotency. |
+| **Vault v3** (setup token → payment token) | One-time wallet onboarding, so later agent payments need no redirect (buyer not present) and still only happen through AgentGuard. Approval-link fallback when Vault isn't available. |
+| **Webhooks** + `verify-webhook-signature` | Capture / void / refund / denial events update the audit log; unverified events are rejected. |
+| **Reporting** (`/v1/reporting/transactions`) | Background reconciliation; matched payments get a "✓ PayPal" badge in the audit grid. |
+| **Refunds** | A refund endpoint for captured agent payments. |
+| **PayPal Agent Toolkit** (`@paypal/agent-toolkit`) | All 47 toolkit tools are offered on AgentGuard's MCP server under their own names. Read-only tools pass straight through. Refunds, dispute acceptance, cancellations, invoices and orders go through the firewall: policy limits, injection scan of the message that triggered them, intent check, Telegram approval and the audit log. This protects merchant "ops agents", not just shopping agents. |
+
 ## Connect your own agent (MCP)
 
 AgentGuard speaks MCP over Streamable HTTP at `http://localhost:4000/mcp` (or your Render URL):
@@ -90,15 +103,17 @@ AgentGuard speaks MCP over Streamable HTTP at `http://localhost:4000/mcp` (or yo
 { "mcpServers": { "agentguard": { "type": "http", "url": "http://localhost:4000/mcp" } } }
 ```
 
+Besides AgentGuard's own tools, the server offers PayPal's Agent Toolkit tools with their usual names and arguments (`create_refund`, `accept_dispute_claim`, `list_invoices`, …), plus two optional fields, `agentguard_task_id` and `agentguard_source_content`. An agent built for PayPal's MCP can therefore switch to AgentGuard with one config change. `PAYPAL_TOOLKIT_TOOLS` limits which tools are offered.
+
 For MCP clients that launch stdio servers: `npm run mcp:stdio`. Set `AGENT_API_KEY` to require `Authorization: Bearer <key>` on agent endpoints.
 
 ## Repository
 
 ```
-apps/api/          Fastify API + MCP server, decision core, AI layer, PayPal, Telegram, jobs, Prisma
-apps/dashboard/    Next.js + Tailwind + AG Grid Enterprise: live feed, policies, audit, budgets, threats, setup
-apps/stores/       FreshCart, GadgetHub and the malicious MegaDealz (hidden injections), plus an unguarded checkout
-apps/demo-agent/   Shopping agent (Anthropic SDK tool runner over AgentGuard's MCP tools), scripted and unguarded modes
+apps/api/          Fastify API + MCP server (incl. guarded PayPal Agent Toolkit), decision core, AI layer, PayPal, Telegram, demo runner, jobs, Prisma
+apps/dashboard/    Next.js + Tailwind + AG Grid Enterprise: live feed, Try it, policies, audit, budgets, threats, setup
+apps/stores/       FreshCart (with a support inbox), GadgetHub and the malicious MegaDealz (hidden injections), plus an unguarded checkout
+apps/demo-agent/   Shopping agent (Anthropic SDK tool runner over AgentGuard's MCP tools), scripted, ops and unguarded modes
 packages/shared/   Zod policy schema, shared types, deterministic policy summary
 tests/             Vitest: policy engine, risk + decision matrix, compiler, injection fixture library
 postman/           Postman collection (approve / hold / block flows, MCP calls, policies)
@@ -109,7 +124,7 @@ docs/PHASES.md     The phase-by-phase build and launch guide
 ## Tests
 
 ```bash
-npm test          # 53 tests: policy rules, risk weights, decision matrix + "AI can only escalate", compiler, injection fixtures
+npm test          # 60 tests: policy rules, risk weights, decision matrix + "AI can only escalate", compiler, toolkit policy, injection fixtures
 npm run typecheck
 ```
 
@@ -123,7 +138,7 @@ npm run typecheck
 
 - Dashboard: `https://<dashboard>.onrender.com` (fill in after deploying)
 - Sandbox buyer login: *(sandbox account only, add after creating it)*
-- Steps: open **Live**, run the three `npm run agent` commands above against the hosted URLs (`AGENTGUARD_MCP_URL`, `STORES_URL`), or import `postman/AgentGuard.postman_collection.json`, set `baseUrl`, and run folder 2 in order.
+- Steps: open **Try it** and run the four scenarios (attack blocked, one-tap approval, PayPal Agent Toolkit ops agent, without AgentGuard). Watch the **Live**, **Audit log** and **Threats** pages update. **Reset demo** restores everything. Or import `postman/AgentGuard.postman_collection.json`, set `baseUrl`, and run folder 2 in order.
 
 ## AI tools used
 
@@ -144,6 +159,8 @@ All calls use the official Anthropic TypeScript SDK with structured outputs, and
 - **Vault availability**: buyer-not-present payments need Vault enabled on the sandbox app. Without it, set `PAYPAL_FLOW=approval_link` (README §8.4 fallback): each payment carries a PayPal approval link, and approving on PayPal is the human approval.
 - **The demo agent is intentionally gullible** (it is told to obey store notices). AgentGuard's protection doesn't depend on the agent; it is enforced at the payment layer. `--careful` runs a hardened prompt.
 - **Budgets are rolling windows** (last 24 h / 7 d / 30 d), and held funds count against them.
+- **Public-demo protection**: per-IP rate limits (tighter on routes that call Claude or start demo runs) and a daily cap on Claude calls (`LLM_DAILY_CALL_LIMIT`). Past the cap, AI checks fail safe, so payments ask the human.
+- **Agent Toolkit calls in mock mode** return simulated results; with sandbox keys they run against PayPal for real. Refunding a capture only works for captures your sandbox app owns.
 - **AG Grid Enterprise** features (row grouping, master-detail, set filters, Excel export) run in trial mode with a watermark until you set `NEXT_PUBLIC_AG_GRID_LICENSE_KEY`.
 
 ## License

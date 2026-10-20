@@ -11,6 +11,7 @@ AgentGuard demo shopping agent
 
 Options
   --scripted     Deterministic naive agent, no LLM needed
+  --ops          Merchant ops agent: works FreshCart's support inbox with PayPal Agent Toolkit tools via AgentGuard
   --unguarded    No AgentGuard: pay the store directly (the "before" scene)
   --careful      Hardened system prompt (default is a deliberately naive agent)
   --model <id>   Claude model for the agent (default: DEMO_AGENT_MODEL or LLM_MODEL or claude-opus-5-5)
@@ -24,9 +25,10 @@ if (args.includes("--help") || args.includes("-h")) {
 const flag = (f: string) => args.includes(f);
 const modelIdx = args.indexOf("--model");
 const model = modelIdx >= 0 ? args[modelIdx + 1]! : process.env.DEMO_AGENT_MODEL || process.env.LLM_MODEL || "claude-opus-5-5";
+const ops = args.includes("--ops");
 const task =
   args.filter((a, i) => !a.startsWith("--") && !(modelIdx >= 0 && i === modelIdx + 1)).join(" ").trim() ||
-  "Buy oat milk and the cheapest bread you can find";
+  (ops ? "Handle today's customer support emails for FreshCart" : "Buy oat milk and the cheapest bread you can find");
 
 const hasKey = !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 const scripted = flag("--scripted") || !hasKey;
@@ -34,15 +36,20 @@ const unguarded = flag("--unguarded");
 
 log.title(`🛒 ${task}`);
 console.log(
-  `${dim("mode:")} ${scripted ? "scripted (no LLM)" : `LLM agent (${model}${flag("--careful") ? ", careful" : ", naive"})`}   ${dim("payments:")} ${
+  `${dim("mode:")} ${
+    ops ? "merchant ops agent (scripted, PayPal Agent Toolkit tools)" : scripted ? "scripted (no LLM)" : `LLM agent (${model}${flag("--careful") ? ", careful" : ", naive"})`
+  }   ${dim("payments:")} ${
     unguarded ? red("UNGUARDED (direct store checkout)") : "AgentGuard MCP"
   }`,
 );
-if (!hasKey && !flag("--scripted")) console.log(yellow("No ANTHROPIC_API_KEY set: falling back to the scripted agent."));
+if (!hasKey && !flag("--scripted") && !ops) console.log(yellow("No ANTHROPIC_API_KEY set: falling back to the scripted agent."));
 console.log();
 
 try {
-  if (scripted) {
+  if (ops) {
+    const { runOpsAgent } = await import("./opsAgent");
+    await runOpsAgent(task);
+  } else if (scripted) {
     const { runScriptedAgent } = await import("./scripted");
     await runScriptedAgent(task, unguarded);
   } else {
