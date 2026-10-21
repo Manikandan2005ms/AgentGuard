@@ -130,7 +130,7 @@ docs/PHASES.md     The phase-by-phase build and launch guide
 ## Tests
 
 ```bash
-npm test          # 65 tests: policy rules, risk weights, decision matrix + "AI can only escalate", compiler, toolkit policy, policy simulator, injection fixtures
+npm test          # 66 tests: policy rules, risk weights, decision matrix + "AI can only escalate", compiler, toolkit policy, policy simulator, injection fixtures
 npm run typecheck
 ```
 
@@ -167,7 +167,7 @@ All calls use the official Anthropic TypeScript SDK with structured outputs, and
 - **The demo agent is intentionally gullible** (it is told to obey store notices). AgentGuard's protection doesn't depend on the agent; it is enforced at the payment layer. `--careful` runs a hardened prompt.
 - **Budgets are rolling windows** (last 24 h / 7 d / 30 d), and held funds count against them.
 - **Public-demo protection**: per-IP rate limits (tighter on routes that call Claude or start demo runs) and a daily cap on Claude calls (`LLM_DAILY_CALL_LIMIT`). Past the cap, AI checks fail safe, so payments ask the human.
-- **Agent Toolkit calls in mock mode** return simulated results; with sandbox keys they run against PayPal for real. Refunding a capture only works for captures your sandbox app owns.
+- **Agent Toolkit calls in mock mode** return simulated results; with sandbox keys they run against PayPal for real (verified on the sandbox: real refunds, held and rejected actions, PayPal errors recorded as failed). Refunding a capture only works for captures your sandbox app owns, so on the sandbox the ops scenario refunds your latest FreshCart oat-milk payment: run *Prompt injection, blocked* first.
 - **AG Grid / AG Charts Enterprise** features (row grouping, master-detail, set filters, Excel export, integrated charts, sparklines) run in trial mode with a watermark until you set `NEXT_PUBLIC_AG_GRID_LICENSE_KEY`.
 - **Policy simulator** replays only the code layer (policy rules, risk score, decision) and reuses each request's stored AI findings, so it is free and deterministic; it doesn't re-ask Claude.
 

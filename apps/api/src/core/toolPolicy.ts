@@ -77,6 +77,23 @@ export function describeToolCall(name: string, args: Record<string, unknown>, am
   }
 }
 
+/**
+ * The toolkit never throws: a failed PayPal call comes back as a normal result shaped
+ * { error: { message } } or { ok: false, status, code, message }. Returns the message, or null on success.
+ */
+export function toolkitError(result: unknown): string | null {
+  if (!result || typeof result !== "object") return null;
+  const r = result as { ok?: unknown; status?: unknown; message?: unknown; error?: unknown };
+  if (r.error && typeof r.error === "object" && typeof (r.error as { message?: unknown }).message === "string") {
+    return (r.error as { message: string }).message;
+  }
+  if (r.ok === false) {
+    const message = typeof r.message === "string" ? r.message : "Unknown PayPal error";
+    return typeof r.status === "number" ? `${message} (HTTP ${r.status})` : message;
+  }
+  return null;
+}
+
 export interface ToolRuleInput {
   name: string;
   cls: ToolClass;

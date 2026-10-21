@@ -8,7 +8,7 @@ import { decideWithBaseline, type DecideInput } from "../core/decide";
 import { visibleExcerpt } from "../core/injectionHeuristics";
 import { inQuietHours, mergeStrictest } from "../core/policyEngine";
 import { scoreRisk, INJECTION_LLM_THRESHOLD } from "../core/riskEngine";
-import { classifyTool, describeToolCall, evaluateToolRules, toolAmount, type ToolClass } from "../core/toolPolicy";
+import { classifyTool, describeToolCall, evaluateToolRules, toolAmount, toolkitError, type ToolClass } from "../core/toolPolicy";
 import { prisma } from "../db";
 import { publish } from "../events";
 import { findTool, runToolkitTool } from "../paypal/toolkit";
@@ -182,7 +182,14 @@ export async function callPayPalTool(name: string, raw: Record<string, unknown>)
 export async function executeTool(row: PaymentRow, decidedBy: string): Promise<PaymentRow> {
   try {
     const result = await runToolkitTool(row.toolName!, (row.toolArgs ?? {}) as Record<string, unknown>);
-    return updatePayment(row.id, { status: "PAID", toolResult: result as Prisma.InputJsonValue, decidedBy, resolvedAt: new Date() });
+    const failed = toolkitError(result);
+    return updatePayment(row.id, {
+      status: failed ? "FAILED" : "PAID",
+      toolResult: result as Prisma.InputJsonValue,
+      ...(failed ? { failureReason: `PayPal toolkit call failed: ${failed}` } : {}),
+      decidedBy,
+      resolvedAt: new Date(),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return updatePayment(row.id, { status: "FAILED", failureReason: `PayPal toolkit call failed: ${message}`, decidedBy, resolvedAt: new Date() });
@@ -191,5 +198,6 @@ export async function executeTool(row: PaymentRow, decidedBy: string): Promise<P
 
 export function toolAgentResult(p: PaymentRequestDTO, cls: ToolClass): AgentResult {
   const r = toAgentResult(p);
-  return { ...r, tool: p.toolName ?? undefined, paypal_result: p.toolResult ?? undefined, reason: `${r.reason} (${cls.replace("_", " ")} action)` };
+  const reason = p.status === "FAILED" && p.failureReason ? `${p.failureReason} (your policy allowed it)` : r.reason;
+  return { ...r, tool: p.toolName ?? undefined, paypal_result: p.toolResult ?? undefined, reason: `${reason} (${cls.replace("_", " ")} action)` };
 }

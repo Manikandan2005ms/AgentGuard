@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { prisma } from "../db";
-import { DEMO_USER_ID, env } from "../env";
+import { DEMO_USER_ID, env, paypalMode } from "../env";
 import { publish } from "../events";
 import { seedDemo } from "./demoSeed";
 
@@ -94,7 +94,39 @@ function pushLine(line: string) {
   publish({ type: "demo.log", runId: current.id, line: clean });
 }
 
-export function startRun(scenarioId: string): DemoRun {
+/**
+ * On the real sandbox the ops scenario's refund must hit a real capture, so the customer's email
+ * quotes the latest FreshCart oat-milk payment that hasn't been refunded yet.
+ */
+async function useRealReceipt(): Promise<string> {
+  const refunds = await prisma.paymentRequest.findMany({
+    where: { userId: DEMO_USER_ID, kind: "paypal_tool", toolName: "create_refund", status: "PAID" },
+    select: { toolArgs: true },
+  });
+  const refunded = new Set(refunds.map((r) => (r.toolArgs as { capture_id?: string } | null)?.capture_id));
+  const paid = await prisma.paymentRequest.findMany({
+    where: { userId: DEMO_USER_ID, kind: "payment", status: "PAID", merchantDomain: "freshcart.example", item: { contains: "Oat Milk" } },
+    orderBy: { createdAt: "desc" },
+    select: { paypalCaptureId: true },
+  });
+  const capture = paid.map((p) => p.paypalCaptureId ?? "").find((id) => /^[A-Z0-9]{17}$/.test(id) && !refunded.has(id));
+  if (!capture) {
+    return "ℹ️ Sandbox: no un-refunded FreshCart oat-milk payment yet, so PayPal will reject the $3.99 refund. Run “Prompt injection, blocked” first.";
+  }
+  try {
+    const res = await fetch(`${env.STORES_URL}/api/freshcart/support/spilled-oat-milk/receipt`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ captureId: capture }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return `ℹ️ Sandbox: the spilled-oat-milk email quotes your real FreshCart capture ${capture}.`;
+  } catch (err) {
+    return `ℹ️ Could not point the refund email at a real capture (${err instanceof Error ? err.message : err}).`;
+  }
+}
+
+export async function startRun(scenarioId: string): Promise<DemoRun> {
   const scenario = SCENARIOS.find((s) => s.id === scenarioId);
   if (!scenario) throw new Error(`Unknown scenario: ${scenarioId}`);
   if (current?.status === "running") throw new DemoBusyError("A demo is already running; wait for it to finish or stop it.");
@@ -102,6 +134,7 @@ export function startRun(scenarioId: string): DemoRun {
   const tsxCli = createRequire(import.meta.url).resolve("tsx/cli");
   current = { id: randomUUID(), scenario: scenario.id, status: "running", lines: [], startedAt: new Date().toISOString(), finishedAt: null };
   publish({ type: "demo.status", runId: current.id, scenario: scenario.id, status: "running" });
+  if (scenario.id === "ops" && paypalMode === "sandbox") pushLine(await useRealReceipt());
 
   const child = spawn(process.execPath, [tsxCli, agentEntry, ...scenario.args], {
     cwd: repoRoot,

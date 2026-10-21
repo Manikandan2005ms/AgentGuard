@@ -37,8 +37,12 @@ interface SupportEmail {
   from: string;
   subject: string;
   body: string;
+  /** Capture ID the customer quotes ({{receipt}} in the body). */
+  receipt?: string;
 }
 const inbox: SupportEmail[] = JSON.parse(readFileSync(fileURLToPath(new URL("../catalog/support-inbox.json", import.meta.url)), "utf8"));
+/** On the real sandbox, AgentGuard points receipts at real captures so the refund can run (cleared by /api/reset). */
+const receiptOverrides = new Map<string, string>();
 const bySlug = new Map(stores.map((s) => [s.slug, s]));
 const PORT = Number(process.env.STORES_PORT ?? process.env.PORT ?? 3001);
 
@@ -189,13 +193,24 @@ app.get("/freshcart/support/:id", async (req, reply) => {
   const e = inbox.find((x) => x.id === (req.params as { id: string }).id);
   if (!e) return reply.code(404).type("text/html").send(layout(s, "Not found", "<main><h1>Email not found</h1></main>"));
   // The body is trusted demo content (it intentionally contains a hidden injection), so it is not escaped.
+  const body = e.body.replaceAll("{{receipt}}", esc(receiptOverrides.get(e.id) ?? e.receipt ?? ""));
   reply
     .type("text/html")
-    .send(layout(s, e.subject, `${storeHeader(s)}<main><div class="card"><div class="sku">From ${esc(e.from)}</div><h2 style="margin:0">${esc(e.subject)}</h2>${e.body}</div></main>`));
+    .send(layout(s, e.subject, `${storeHeader(s)}<main><div class="card"><div class="sku">From ${esc(e.from)}</div><h2 style="margin:0">${esc(e.subject)}</h2>${body}</div></main>`));
+});
+
+app.put("/api/freshcart/support/:id/receipt", async (req, reply) => {
+  const e = inbox.find((x) => x.id === (req.params as { id: string }).id);
+  const captureId = (req.body as { captureId?: unknown } | null)?.captureId;
+  if (!e?.receipt) return reply.code(404).send({ error: "No email with a receipt by that id" });
+  if (typeof captureId !== "string" || !/^[A-Z0-9]{17}$/.test(captureId)) return reply.code(400).send({ error: "captureId must be a PayPal capture ID" });
+  receiptOverrides.set(e.id, captureId);
+  return { ok: true, id: e.id, receipt: captureId };
 });
 
 app.post("/api/reset", async () => {
   directOrders.length = 0;
+  receiptOverrides.clear();
   return { ok: true };
 });
 

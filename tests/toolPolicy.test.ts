@@ -1,7 +1,7 @@
 import { emptyPolicy, type Policy } from "@agentguard/shared";
 import { describe, expect, it } from "vitest";
 import { worstOutcome } from "../apps/api/src/core/policyEngine";
-import { classifyTool, describeToolCall, evaluateToolRules, toolAmount } from "../apps/api/src/core/toolPolicy";
+import { classifyTool, describeToolCall, evaluateToolRules, toolAmount, toolkitError } from "../apps/api/src/core/toolPolicy";
 
 const policy: Policy = { ...emptyPolicy(), per_transaction_limit: 200, require_approval_above: 50 };
 
@@ -51,5 +51,15 @@ describe("PayPal Agent Toolkit tool policy", () => {
     const r = evaluateToolRules({ name: "create_refund", cls: "money_out", amount: 3.99, policy, injectionInSource: true });
     expect(r.find((x) => x.rule_id === "injected_privileged_action")?.outcome).toBe("block");
     expect(worstOutcome(evaluateToolRules({ name: "create_invoice", cls: "write", amount: 10, policy, injectionInSource: true }))).toBe("ask");
+  });
+
+  it("spots the toolkit's error results (it never throws)", () => {
+    expect(toolkitError({ error: { message: "get_merchant_insights is not supported in sandbox mode", type: "paypal_error" } })).toBe(
+      "get_merchant_insights is not supported in sandbox mode",
+    );
+    expect(toolkitError({ ok: false, status: 404, code: "PAYPAL_API_HTTP_ERROR", message: "RESOURCE_NOT_FOUND" })).toBe("RESOURCE_NOT_FOUND (HTTP 404)");
+    expect(toolkitError({ id: "8XY12345AB678901C", status: "COMPLETED" })).toBeNull();
+    expect(toolkitError({ total_items: 0, total_pages: 0 })).toBeNull();
+    expect(toolkitError("plain text")).toBeNull();
   });
 });

@@ -22,6 +22,8 @@ export interface AgentResult {
   reason: string;
   safe_next_step: string;
   approve_url?: string | null;
+  /** PayPal's response once a guarded Agent Toolkit call ran. */
+  paypal_result?: unknown;
 }
 
 /* ---------------------------------- Store browsing ---------------------------------- */
@@ -167,6 +169,10 @@ export class AgentGuard {
     if (typeof json.status === "string" && typeof json.request_id === "string") {
       const r = json as AgentResult;
       log.guard(r.status, r.reason);
+      const done = r.paypal_result as { id?: unknown; status?: unknown } | undefined;
+      if (r.status === "approved" && typeof done?.id === "string") {
+        log.info(`   PayPal ran ${name}: ${done.id}${typeof done.status === "string" ? ` (${done.status})` : ""}`);
+      }
       if (r.status === "pending_approval") return this.waitForDecision(r);
     } else {
       log.info("   read-only call passed straight through to PayPal");

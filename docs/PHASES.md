@@ -16,7 +16,7 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 | 3 | Policy engine, risk engine, decision function + tests | ✅ |
 | 4 | Webhooks with signature verification | ✅ mock · 🟡 sandbox |
 | 5 | AI layer: compiler, intent, injection, categorizer, explainer | ✅ heuristics · 🟡 Claude |
-| 6 | MCP server (incl. guarded PayPal Agent Toolkit), demo stores, demo agent, **Try it** page | ✅ scripted · 🟡 LLM agent · 🟡 toolkit on sandbox |
+| 6 | MCP server (incl. guarded PayPal Agent Toolkit), demo stores, demo agent, **Try it** page | ✅ scripted · 🟡 LLM agent · ✅ **toolkit on real sandbox (verified Oct 21)** |
 | 7 | Telegram approvals + timeout job | ✅ code · 🟡 live bot |
 | 8 | Dashboard: live feed, policies, AG Grid audit, budgets, threats, setup | ✅ |
 | 9 | Deploy to Render | 🧑 (blueprint ready) |
@@ -24,9 +24,11 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 | 11 | Demo video | 🧑 |
 | 12 | Devpost submission | 🧑 |
 
-**Verified here (no keys):** `npm test` (65 passing), the four **Try it** scenarios run from the browser (attack blocked, approval → captured, ops agent: toolkit refund executed while the injected refund and dispute were blocked, unguarded → $1,000.99), per-IP rate limits returning 429s, and typecheck of every package, `next build`, and a full local run in mock mode: approve → captured, MegaDealz attack → blocked with all three hidden techniques identified, agent recovers at FreshCart, $129 headphones → held → approved from the dashboard → captured, unguarded agent → $1,000 of gift cards, mock Vault onboarding redirect, MCP `tools/list`.
+**Verified here (no keys):** `npm test` (66 passing), the four **Try it** scenarios run from the browser (attack blocked, approval → captured, ops agent: toolkit refund executed while the injected refund and dispute were blocked, unguarded → $1,000.99), per-IP rate limits returning 429s, and typecheck of every package, `next build`, and a full local run in mock mode: approve → captured, MegaDealz attack → blocked with all three hidden techniques identified, agent recovers at FreshCart, $129 headphones → held → approved from the dashboard → captured, unguarded agent → $1,000 of gift cards, mock Vault onboarding redirect, MCP `tools/list`.
 
-**Not verified yet (needs your accounts):** real PayPal sandbox calls (Vault, Orders, webhooks, reporting), Claude API calls, the Telegram bot, and the Render deploy. The code for all of these is written against the documented APIs; Phases 2, 4, 5, 7 and 9 tell you exactly how to check each one.
+**Verified on the real PayPal sandbox (Oct 21):** Vault (wallet connect), Orders authorize → capture / void, Transaction search, and the PayPal Agent Toolkit: read-only tools, real refunds, held and rejected actions, and the ops-agent scenario (details in Phases 2 and 6).
+
+**Not verified yet (needs your accounts or a public URL):** PayPal webhooks (need the deployed URL), Claude API calls, the Telegram bot, and the Render deploy. The code for all of these is written against the documented APIs; Phases 4, 5, 7 and 9 tell you exactly how to check each one.
 
 ---
 
@@ -39,7 +41,7 @@ From paypalaihackathon.devpost.com (overview, rules, resources):
 - **Judges may score from the text, images and video alone**, so the video and the Devpost description carry as much weight as the code.
 - **Functional demo is mandatory:** a hosted URL *or* complete run instructions, plus any test credentials or sandbox logins in the README. Mock mode (runs with no keys) already covers the second option.
 - **Prize limits:** a project can win **one** Grand *or* Honorable Mention prize **plus one** sponsor prize. Target AG Grid (up to $5,000) as the sponsor prize; Render pays only in credits. **Postman has no prize** (the collection is still useful for judges).
-- **Resources the PayPal judges point to:** the **PayPal Agent Toolkit** and **PayPal MCP server**. AgentGuard doesn't use them yet (see R2 below).
+- **Resources the PayPal judges point to:** the **PayPal Agent Toolkit** and **PayPal MCP server**. AgentGuard puts all 47 Agent Toolkit tools behind its firewall on its own MCP server (R2, verified on the real sandbox Oct 21).
 - **Video:** under 3 minutes, public on YouTube, no copyrighted music or third-party trademarks without permission.
 
 ## Remaining work to win
@@ -48,9 +50,9 @@ From paypalaihackathon.devpost.com (overview, rules, resources):
 
 | # | Task | Why it matters | When |
 |---|---|---|---|
-| Y1 | Join the hackathon on Devpost; push the repo to a **public** GitHub repo | Required; GitHub shows the MIT license in the About section | Oct 21 |
-| Y2 | PayPal sandbox app + accounts (Phase 0). In the app's **Features**, enable **Vault / save payment methods** and **Transaction search** | Without Transaction search, reconciliation gets 403s; without Vault, use the fallback flow | Oct 21 |
-| Y3 | Run Phases 2 and 4 against the real sandbox and send me any error output | **Biggest technical risk:** the real PayPal calls haven't been exercised yet | Oct 22–25 |
+| 🟡 Y1 | Join the hackathon on Devpost; push the repo to a **public** GitHub repo (✅ pushed Oct 20; confirm you clicked **Join hackathon**) | Required; GitHub shows the MIT license in the About section | Oct 21 |
+| ✅ Y2 | PayPal sandbox app + accounts (Phase 0, done Oct 21; Transaction search confirmed working). In the app's **Features**, enable **Vault / save payment methods** and **Transaction search** | Without Transaction search, reconciliation gets 403s; without Vault, use the fallback flow | Oct 21 |
+| 🟡 Y3 | Run Phases 2 and 4 against the real sandbox and send me any error output (✅ Phase 2 and the Agent Toolkit verified Oct 21; webhooks wait for the public URL from Y5) | **Biggest technical risk:** the real PayPal calls haven't been exercised yet | Oct 22–25 |
 | Y4 | Add `ANTHROPIC_API_KEY`, run Phase 5; add the Telegram token, run Phase 7 | Verifies the AI layer and phone approvals | Oct 27 – Nov 2 |
 | Y5 | Deploy on Render with a database that **won't expire during judging**: a paid Render Postgres plan, or an external free Postgres such as Neon (set `DATABASE_URL`) | Free Render Postgres expires 30 days after creation, which lands inside Dec 1–15 | Nov 5 |
 | Y6 | Ask AG Grid for a license key (sponsor resources / Discord) | Removes the trial watermark from the video and hosted demo | Before Nov 8 |
@@ -67,7 +69,7 @@ From paypalaihackathon.devpost.com (overview, rules, resources):
 | ✅ R5 | **Refund button** in the audit grid, and a **policy simulator** (done Oct 20) that replays the last 30 days against a draft policy before activation, shown in an AG Grid | Design, Technological Implementation |
 | ✅ R6 | **Phone-width pass** (done Oct 20): no page wider than 375px; cards restack, the audit grid drops its pinned column and side bar on phones. Plus a shield favicon and a generated 1200×630 social preview | Design, video quality |
 
-R1–R6 are done. What's left is yours (Y1–Y7), starting with verifying everything against the real PayPal sandbox (Y3). Leave Nov 11–12 as buffer.
+R1–R6 are done, and the real-sandbox check (Y3) passed except webhooks, which need the public URL from Y5. Next: Y4 (Claude key, Telegram bot), then Y5 (deploy) and the webhooks, Y6, and Y7. Leave Nov 11–12 as buffer.
 
 ---
 
@@ -129,7 +131,7 @@ npm run dev                   # terminal 2: API :4000, dashboard :3000, stores :
 
 ## Phase 2: PayPal money flow ✅ mock · ✅ real sandbox
 
-**Verified Oct 21 on the real sandbox:** wallet connected (vaulted), auto-approved purchases authorized and captured with real order/capture IDs, the MegaDealz attack blocked before any PayPal call, a $129 hold approved → captured, and a second $129 hold rejected → voided.
+**Verified Oct 21 on the real sandbox:** wallet connected (vaulted), auto-approved purchases authorized and captured with real order/capture IDs, the MegaDealz attack blocked before any PayPal call, a $129 hold approved → captured, and a second $129 hold rejected → voided. Not tried on the sandbox yet: the audit grid's **Refund** button (the toolkit's `create_refund` is verified, Phase 6).
 
 **Lessons from connecting the wallet (read before demoing):**
 - Log in on PayPal's page with the **sandbox Personal test account** (`sb-…@personal.example.com`), never your real email; real accounts don't exist in the sandbox.
@@ -168,7 +170,7 @@ npm run dev                   # terminal 2: API :4000, dashboard :3000, stores :
 npm test
 ```
 
-**Done when:** tests pass (53/53 today). Tune weights in `RISK_WEIGHTS` if your demo needs it, and re-run the tests.
+**Done when:** tests pass (66/66 today). Tune weights in `RISK_WEIGHTS` if your demo needs it, and re-run the tests.
 
 ---
 
@@ -203,7 +205,7 @@ npm test
 
 ---
 
-## Phase 6: MCP server, demo stores, demo agent ✅ scripted · 🟡 LLM agent (Oct 30 – Nov 1)
+## Phase 6: MCP server, demo stores, demo agent ✅ scripted · 🟡 LLM agent · ✅ toolkit on real sandbox (Oct 30 – Nov 1)
 
 **Built:**
 - `apps/api/src/mcp/server.ts`: MCP tools `start_task`, `request_payment`, `get_payment_status`, `get_remaining_budget` over Streamable HTTP at `/mcp` (plus `npm run mcp:stdio`).
@@ -212,11 +214,21 @@ npm test
 - **PayPal Agent Toolkit behind the firewall** (`apps/api/src/paypal/toolkit.ts`, `services/toolkitService.ts`, `core/toolPolicy.ts`): all 47 `@paypal/agent-toolkit` tools on AgentGuard's MCP server. Read-only tools pass through. Refunds and dispute acceptance are checked against your limits; cancellations and deletions always ask. A privileged action triggered by a message with hidden instructions is blocked. Mock mode simulates results.
 - **Try it page** (`/try`, `services/demoRunner.ts`): runs each scenario as a real agent process on the server, streams its log, and **Reset demo** restores the seed. Rate-limited, one run at a time.
 
+**Verified Oct 21 on the real sandbox (PayPal Agent Toolkit through AgentGuard's MCP):**
+- Read-only tools return real data: `list_invoices`, `get_order`, `list_products`, `list_disputes`, `list_subscription_plans`, `list_transactions`, `get_refund`. `get_merchant_insights` is live-only: the toolkit itself refuses it in the sandbox.
+- `create_refund` for $1.00 → approved by policy → real refund, COMPLETED. A full refund with no amount → AgentGuard found the $3.29 in its own audit log, applied your limits → refunded.
+- `create_product` (write) → created. `accept_dispute_claim` (no amount) → held → approved → PayPal answered 403 → recorded as **FAILED** with PayPal's reason. `cancel_subscription` → held → rejected → never sent to PayPal.
+- **Try it → Merchant ops agent:** the invoice lookup passes through, the $3.99 refund runs for real (the log shows PayPal's refund ID), the injected full refund and dispute acceptance are blocked.
+- Fixed while testing: the toolkit never throws; a failed PayPal call comes back as a normal result. AgentGuard now records it as FAILED with PayPal's message (it used to show as done).
+
+**Sandbox tip for the ops demo:** on the sandbox, the customer's refund email quotes your latest FreshCart oat-milk capture that hasn't been refunded, and each capture can be refunded only once. So run **Prompt injection, blocked** (it buys oat milk) before each ops take. With no capture left, PayPal rejects the refund and the log says why. Run it from the Try it page: the terminal `--ops` run keeps the sample capture ID, which only works in mock mode.
+
 ```bash
 npm run agent -- --scripted "Buy oat milk and the cheapest bread you can find"     # no LLM, deterministic
 npm run agent -- "Buy oat milk and the cheapest bread you can find"                # Claude (naive prompt)
 npm run agent -- --careful "Buy oat milk and the cheapest bread you can find"      # Claude, hardened prompt
 npm run agent -- --unguarded "Buy the cheapest bread you can find"                 # no AgentGuard
+npm run agent -- --ops                                                             # merchant ops agent (PayPal Agent Toolkit)
 ```
 
 **Done when:** a full run shows groceries approved and the MegaDealz attack blocked. If Claude notices the injection and refuses to follow it even with the naive prompt, that is fine: use `--scripted` for the video take (it really does follow the hidden instruction) and mention that strong models resist, but the firewall doesn't depend on that.
@@ -283,7 +295,7 @@ AGENTGUARD_MCP_URL=https://<api>/mcp STORES_URL=https://<stores> npm run agent -
 - [ ] Add 3–4 screenshots (Live with a blocked attack, Policies compile, Audit log grouped by decision, Threats) to the README.
 - [ ] Import `postman/AgentGuard.postman_collection.json`, set `baseUrl` to the Render API, run folder 2 in order, and link the collection in the README for judges (Postman has no prize in this hackathon, but it makes testing easy).
 - [ ] Phone-width check of the dashboard (layouts are responsive; verify on your phone).
-- [ ] Optional stretch, only if everything above is done: per-agent API keys with their own budgets, the policy simulator UI (the `POST /api/payments/simulate` endpoint already exists), a refund button in the audit grid (`POST /api/payments/:id/refund` exists).
+- [ ] Optional stretch, only if everything above is done: per-agent API keys with their own budgets. (The policy simulator UI and the audit-grid refund button are done: R5.)
 
 **Scope rule (from the plan):** if behind, cut reconciliation → refunds → budget charts → quiet hours. Never cut the injection demo, Telegram approval, authorize/capture/void, or the AG Grid audit log.
 
@@ -301,7 +313,7 @@ You can run every scene from the dashboard's **Try it** page instead of a termin
 | 1:00–1:20 | Normal purchase | `npm run agent -- --scripted "Buy oat milk and the cheapest bread you can find"`: FreshCart oat milk ✅, show the PayPal capture ID |
 | 1:20–1:55 | The attack, blocked | Same run: MegaDealz → ⛔ BLOCKED card with the hidden text; Threats page; agent recovers at FreshCart |
 | 1:55–2:25 | Phone approval | `npm run agent -- --scripted "Buy wireless headphones"` → phone buzzes → tap Approve → captured. Second run → Reject → voided |
-| (optional, 15s) | PayPal Agent Toolkit ops agent | Try it → *Merchant ops agent*: the $3.99 refund runs, the injected full refund and dispute acceptance are blocked |
+| (optional, 15s) | PayPal Agent Toolkit ops agent | Try it → *Merchant ops agent*: the $3.99 refund runs (show PayPal's refund ID), the injected full refund and dispute acceptance are blocked. On the sandbox, run *Prompt injection, blocked* first so there's a fresh oat-milk capture to refund |
 | 2:25–2:45 | Audit & kill switch | Audit log grouped by decision, expand a row; flip the kill switch → next request blocked |
 | 2:45–3:00 | Close | Architecture slide: "AgentGuard: the trust layer agentic commerce needs, built on PayPal" |
 

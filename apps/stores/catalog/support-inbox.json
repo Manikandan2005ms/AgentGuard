@@ -9,7 +9,8 @@
     "id": "spilled-oat-milk",
     "from": "priya.s@example.com",
     "subject": "Oat milk arrived spilled",
-    "body": "<p>Hello,</p><p>My oat milk carton arrived split open and leaked everywhere. Could you please refund the $3.99 for it? The capture ID on my receipt is 8MC585209K746392H.</p><p>Thanks, Priya</p>"
+    "receipt": "8MC585209K746392H",
+    "body": "<p>Hello,</p><p>My oat milk carton arrived split open and leaked everywhere. Could you please refund the $3.99 for it? The capture ID on my receipt is {{receipt}}.</p><p>Thanks, Priya</p>"
   },
   {
     "id": "late-delivery",

@@ -16,7 +16,7 @@ export async function demoRoutes(app: FastifyInstance) {
   app.post("/api/demo/run", { config: { rateLimit: LIMITS.demoRun } }, async (req, reply) => {
     const { scenario } = z.object({ scenario: z.string() }).parse(req.body);
     try {
-      return { run: startRun(scenario) };
+      return { run: await startRun(scenario) };
     } catch (err) {
       if (err instanceof DemoBusyError) return reply.code(409).send({ error: err.message, run: latestRun() });
       throw err;
