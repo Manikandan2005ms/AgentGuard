@@ -29,7 +29,7 @@ import { toDTO, withRelations, type PaymentRow } from "./dto";
 import { loadHistory } from "./history";
 import { notifier } from "./notify";
 import { executeTool } from "./toolkitService";
-import { getActivePolicy, getUser } from "./users";
+import { getActivePolicy, getUser, usableVaultId } from "./users";
 
 /* ------------------------------------------------------------------------------------------ */
 /* Evaluation: everything up to the decision. No side effects, so it also powers simulations. */
@@ -334,7 +334,7 @@ export async function requestPayment(input: PaymentRequestInput): Promise<AgentR
     }
 
     // APPROVE or ASK_HUMAN: authorize first (funds held), capture only when allowed (README §4.5).
-    const row = await startPayPal(created, ev, user.paypalVaultId);
+    const row = await startPayPal(created, ev, usableVaultId(user));
     return toAgentResult(toDTO(row));
   });
 }

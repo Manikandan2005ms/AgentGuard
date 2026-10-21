@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type MeResponse } from "@/lib/api";
 
 function Step({ n, title, done, children }: { n: number; title: string; done: boolean; children: React.ReactNode }) {
@@ -34,10 +34,23 @@ export default function SetupPage() {
   useEffect(() => {
     load();
     const q = new URLSearchParams(window.location.search).get("paypal");
-    if (q === "connected") setNotice("✓ PayPal wallet connected. Your agent can now pay without a redirect, but only through AgentGuard.");
     if (q === "error") setNotice("PayPal connection failed. Check the API logs and your sandbox app settings.");
     if (q === "cancelled") setNotice("PayPal connection cancelled.");
+    // Drop ?paypal=… from the address so a bookmarked or autocompleted URL can't replay an old message.
+    if (q) window.history.replaceState(null, "", window.location.pathname);
   }, []);
+
+  // "Connected" comes from the API, never from the URL alone.
+  const justConnected = useRef(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("paypal") === "connected");
+  useEffect(() => {
+    if (!me || !justConnected.current) return;
+    justConnected.current = false;
+    setNotice(
+      me.user.paypalConnected
+        ? "✓ PayPal wallet connected. Your agent can now pay without a redirect, but only through AgentGuard."
+        : "PayPal didn't finish connecting. Click Connect PayPal and log in on the PayPal page.",
+    );
+  }, [me]);
 
   const connectPayPal = async () => {
     setBusy(true);
@@ -82,7 +95,8 @@ export default function SetupPage() {
       <Step n={1} title="Connect your PayPal wallet" done={!!me?.user.paypalConnected}>
         <p className="text-muted">
           You approve AgentGuard once on PayPal (Vault). After that, agent payments are authorized without a redirect, and only after they pass your
-          policy. Ask-human payments are <b>authorized (held)</b> and captured only when you approve.
+          policy. Ask-human payments are <b>authorized (held)</b> and captured only when you approve. To verify the wallet, PayPal shows a{" "}
+          <b>$1.00 hold</b> that AgentGuard releases immediately.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {me?.user.paypalConnected ? (

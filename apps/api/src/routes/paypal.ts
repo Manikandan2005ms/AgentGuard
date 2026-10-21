@@ -22,9 +22,10 @@ export async function paypalRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/paypal/vault/return", async (req, reply) => {
-    const q = req.query as { approval_token_id?: string };
+    // Setup tokens come back as ?approval_token_id=…, vault orders as ?token=<order id>.
+    const q = req.query as { approval_token_id?: string; token?: string };
     const user = await getUser();
-    const setupTokenId = q.approval_token_id ?? user.pendingSetupTokenId;
+    const setupTokenId = q.approval_token_id ?? q.token ?? user.pendingSetupTokenId;
     if (!setupTokenId) return reply.redirect(`${env.DASHBOARD_URL}/setup?paypal=error`);
     try {
       const { vaultId, customerId } = await gateway.completeVaultSetup(setupTokenId);

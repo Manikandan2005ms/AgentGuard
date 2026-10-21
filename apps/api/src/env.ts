@@ -23,6 +23,9 @@ const EnvSchema = z.object({
   PAYPAL_BASE_URL: z.string().default("https://api-m.sandbox.paypal.com"),
   PAYPAL_WEBHOOK_ID: opt,
   PAYPAL_FLOW: z.enum(["vault", "approval_link"]).default("vault"),
+  // How the wallet is saved: "purchase" = approve a $1.00 hold with "save for later" (hold voided at once),
+  // "setup_token" = vault without purchase (/v3/vault/setup-tokens). Some sandboxes reject the latter (CANNOT_PAY_SELF).
+  PAYPAL_VAULT_METHOD: z.enum(["purchase", "setup_token"]).default("purchase"),
   PAYPAL_MERCHANT_FRESHCART: opt,
   PAYPAL_MERCHANT_GADGETHUB: opt,
   PAYPAL_MERCHANT_MEGADEALZ: opt,

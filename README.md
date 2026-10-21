@@ -162,6 +162,7 @@ All calls use the official Anthropic TypeScript SDK with structured outputs, and
 ## Honest notes
 
 - **Single-user demo**: every request acts for the seeded demo user, and dashboard endpoints are unauthenticated. Fine for a sandbox demo, not for production.
+- **Wallet onboarding** saves the PayPal wallet during a **$1.00 hold that is voided immediately** (Orders API with vault attributes), because some sandboxes reject vault-without-purchase with `CANNOT_PAY_SELF`. `PAYPAL_VAULT_METHOD=setup_token` uses the /v3 setup-token flow instead. Verified on the real sandbox on Oct 21 (vault, authorize, capture, void).
 - **Vault availability**: buyer-not-present payments need Vault enabled on the sandbox app. Without it, set `PAYPAL_FLOW=approval_link` (README §8.4 fallback): each payment carries a PayPal approval link, and approving on PayPal is the human approval.
 - **The demo agent is intentionally gullible** (it is told to obey store notices). AgentGuard's protection doesn't depend on the agent; it is enforced at the payment layer. `--careful` runs a hardened prompt.
 - **Budgets are rolling windows** (last 24 h / 7 d / 30 d), and held funds count against them.

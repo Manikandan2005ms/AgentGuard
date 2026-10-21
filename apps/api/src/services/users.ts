@@ -1,6 +1,16 @@
 import { PolicySchema, type Policy } from "@agentguard/shared";
 import { prisma } from "../db";
-import { DEMO_USER_ID } from "../env";
+import { DEMO_USER_ID, paypalMode } from "../env";
+
+/**
+ * The saved PayPal wallet (vault) id, if it can be used in the current mode. A wallet connected
+ * while running the mock gateway ("MOCK-…") means nothing to the real sandbox, so it's ignored there.
+ */
+export function usableVaultId(user: { paypalVaultId: string | null }): string | null {
+  const id = user.paypalVaultId;
+  if (!id) return null;
+  return (paypalMode === "sandbox") === id.startsWith("MOCK-") ? null : id;
+}
 
 /** Single-user demo: every request acts for the seeded demo user. */
 export async function getUser() {

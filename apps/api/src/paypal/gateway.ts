@@ -93,11 +93,15 @@ class SandboxGateway implements PaymentsGateway {
   }
 
   createVaultSetup(returnUrl: string, cancelUrl: string) {
-    return vault.createSetupToken(returnUrl, cancelUrl, `setup-${randomUUID()}`);
+    return env.PAYPAL_VAULT_METHOD === "purchase"
+      ? vault.createVaultOrder(returnUrl, cancelUrl, `vault-order-${randomUUID()}`)
+      : vault.createSetupToken(returnUrl, cancelUrl, `setup-${randomUUID()}`);
   }
 
   completeVaultSetup(setupTokenId: string) {
-    return vault.createPaymentToken(setupTokenId, `token-${setupTokenId}`);
+    return env.PAYPAL_VAULT_METHOD === "purchase"
+      ? vault.completeVaultOrder(setupTokenId)
+      : vault.createPaymentToken(setupTokenId, `token-${setupTokenId}`);
   }
 
   verifyWebhook(headers: Record<string, string | string[] | undefined>, event: PayPalWebhookEvent) {

@@ -11,7 +11,7 @@ import { LIMITS } from "../lib/limits";
 import { toDTO, withRelations } from "../services/dto";
 import { activatePolicy, activePolicyView, compileAndSave, listPolicies, simulatePolicy } from "../services/policyService";
 import { budgetUsage, summary } from "../services/statsService";
-import { getUser } from "../services/users";
+import { getUser, usableVaultId } from "../services/users";
 import { telegramBotUsername } from "../telegram/bot";
 
 export async function dashboardRoutes(app: FastifyInstance) {
@@ -23,7 +23,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
       user: {
         name: user.name,
         killSwitch: user.killSwitch,
-        paypalConnected: !!user.paypalVaultId,
+        paypalConnected: !!usableVaultId(user),
         telegramConnected: !!user.telegramChatId,
         telegramUsername: user.telegramUsername,
       },

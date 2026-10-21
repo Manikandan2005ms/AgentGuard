@@ -12,7 +12,7 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 |---|---|---|
 | 0 | Accounts & keys (PayPal, Anthropic, Telegram, GitHub, Devpost) | 🧑 |
 | 1 | Monorepo, local Postgres, one-command dev | ✅ |
-| 2 | PayPal money flow: authorize → capture / void, Vault, fallback | ✅ mock · 🟡 sandbox |
+| 2 | PayPal money flow: authorize → capture / void, Vault, fallback | ✅ mock · ✅ **real sandbox (verified Oct 21)** |
 | 3 | Policy engine, risk engine, decision function + tests | ✅ |
 | 4 | Webhooks with signature verification | ✅ mock · 🟡 sandbox |
 | 5 | AI layer: compiler, intent, injection, categorizer, explainer | ✅ heuristics · 🟡 Claude |
@@ -127,7 +127,15 @@ npm run dev                   # terminal 2: API :4000, dashboard :3000, stores :
 
 ---
 
-## Phase 2: PayPal money flow ✅ mock · 🟡 sandbox (Oct 21–22)
+## Phase 2: PayPal money flow ✅ mock · ✅ real sandbox
+
+**Verified Oct 21 on the real sandbox:** wallet connected (vaulted), auto-approved purchases authorized and captured with real order/capture IDs, the MegaDealz attack blocked before any PayPal call, a $129 hold approved → captured, and a second $129 hold rejected → voided.
+
+**Lessons from connecting the wallet (read before demoing):**
+- Log in on PayPal's page with the **sandbox Personal test account** (`sb-…@personal.example.com`), never your real email; real accounts don't exist in the sandbox.
+- Create the REST app under a **US sandbox Business account** (the "Sandbox Account" dropdown when you create the app), not the default IN one.
+- This sandbox rejects "save wallet without a purchase" (PayPal error page, code `CANNOT_PAY_SELF`, *"This PayPal account is associated with the merchant…"*) while normal checkout works. So **Connect PayPal saves the wallet during a $1.00 hold that AgentGuard voids immediately** (`PAYPAL_VAULT_METHOD=purchase`, the default). `PAYPAL_VAULT_METHOD=setup_token` switches back to the setup-token flow.
+- Use an Incognito window if Chrome keeps auto-filling an old login or an old `?paypal=connected` address. The Setup page now shows "connected" only when a wallet is really saved.
 
 **Built** (`apps/api/src/paypal/`):
 - `auth.ts`: OAuth client-credentials token, cached until expiry.
