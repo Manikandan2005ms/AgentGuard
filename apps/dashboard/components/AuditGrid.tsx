@@ -1,5 +1,7 @@
 "use client";
 
+// Must run before ag-grid-enterprise loads (see the file for why).
+import "@/lib/agGridLicense";
 import type { PaymentRequestDTO } from "@agentguard/shared";
 import {
   AllCommunityModule,
