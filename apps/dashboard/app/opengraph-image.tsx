@@ -5,16 +5,18 @@ export const alt = "AgentGuard: a spending firewall for AI agents, powered by Pa
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const pill = (text: string, color: string) => (
+const stamp = (text: string, color: string) => (
   <div
     style={{
       display: "flex",
-      padding: "10px 22px",
-      borderRadius: 999,
-      border: `2px solid ${color}`,
+      padding: "6px 16px 4px",
+      borderRadius: 6,
+      border: `3px solid ${color}`,
       color,
-      fontSize: 26,
+      fontSize: 24,
       fontWeight: 700,
+      letterSpacing: 3,
+      textTransform: "uppercase",
     }}
   >
     {text}
@@ -31,31 +33,29 @@ export default function OpengraphImage() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: "70px 80px",
-          background: "linear-gradient(135deg, #070b14 0%, #0d1424 60%, #0b2230 100%)",
-          color: "#e6ebf5",
-          fontFamily: "sans-serif",
+          padding: "72px 84px",
+          background: "#f3efe6",
+          color: "#1d1c19",
+          fontFamily: "serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
-          <svg width="96" height="96" viewBox="0 0 64 64">
-            <path d="M32 9 13 16v14c0 12.5 8.1 23.4 19 27 10.9-3.6 19-14.5 19-27V16L32 9Z" fill="rgba(34,211,238,0.18)" stroke="#22d3ee" strokeWidth="3.5" />
-            <path d="m23 32.5 6.5 6.5L41.5 26" fill="none" stroke="#22d3ee" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+        <div style={{ display: "flex", alignItems: "center", gap: 22, borderBottom: "2px solid #c4bba7", paddingBottom: 28 }}>
+          <svg width="64" height="64" viewBox="0 0 24 24">
+            <path d="M12 2.2 4.2 5v6.3c0 4.8 3.2 8.9 7.8 10.5 4.6-1.6 7.8-5.7 7.8-10.5V5L12 2.2Z" fill="#1d1c19" />
+            <rect x="7.6" y="10.4" width="8.8" height="2.4" rx="1.2" fill="#f3efe6" />
           </svg>
-          <div style={{ display: "flex", fontSize: 76, fontWeight: 800, letterSpacing: -2 }}>
-            Agent<span style={{ color: "#22d3ee" }}>Guard</span>
-          </div>
+          <div style={{ display: "flex", fontSize: 56, fontWeight: 700, letterSpacing: -1 }}>AgentGuard</div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ display: "flex", fontSize: 54, fontWeight: 700, lineHeight: 1.15 }}>A spending firewall for AI agents</div>
-          <div style={{ display: "flex", fontSize: 30, color: "#8b98b8" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ display: "flex", fontSize: 72, lineHeight: 1.05, letterSpacing: -1.5 }}>A spending firewall for AI agents.</div>
+          <div style={{ display: "flex", fontSize: 30, color: "#59554c", fontFamily: "sans-serif" }}>
             Give an agent your PayPal wallet without giving it a blank cheque.
           </div>
         </div>
-        <div style={{ display: "flex", gap: 18 }}>
-          {pill("Auto-approve", "#22c55e")}
-          {pill("Ask on your phone", "#f59e0b")}
-          {pill("Block prompt injection", "#ef4444")}
+        <div style={{ display: "flex", gap: 20, fontFamily: "sans-serif" }}>
+          {stamp("Approved", "#2e6a3c")}
+          {stamp("Asked you", "#995a0b")}
+          {stamp("Blocked", "#ad3826")}
         </div>
       </div>
     ),

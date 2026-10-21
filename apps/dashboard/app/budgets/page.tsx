@@ -6,13 +6,15 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CHART_COLORS } from "@/components/Charts";
+import { PageHeader } from "@/components/PageHeader";
 import { api, money } from "@/lib/api";
+import { PALETTE } from "@/lib/palette";
 import { useLiveEvents } from "@/lib/useLiveEvents";
 
 // Charts render in the browser only.
 const Chart = dynamic(() => import("@/components/Charts").then((m) => m.Chart), {
   ssr: false,
-  loading: () => <div className="h-[260px] animate-pulse rounded-lg bg-panel-2" />,
+  loading: () => <div className="h-[260px] animate-pulse rounded-[5px] bg-paper" />,
 });
 
 interface Summary {
@@ -22,42 +24,55 @@ interface Summary {
   spendByCategory7d: { category: string; spent: number }[];
 }
 
-const label = (b: BudgetUsageDTO) => `${b.category === "*" ? "All categories" : b.category.replace("_", " ")} / ${b.period}`;
+const name = (b: BudgetUsageDTO) => (b.category === "*" ? "All categories" : b.category.replace("_", " "));
+const label = (b: BudgetUsageDTO) => `${name(b)} / ${b.period}`;
 const usd = (v: number) => `$${Math.round(v)}`;
 
-function BudgetBar({ b }: { b: BudgetUsageDTO }) {
+function BudgetRow({ b }: { b: BudgetUsageDTO }) {
   const pctSpent = Math.min(100, (b.spent / b.limit) * 100);
   const pctHeld = Math.min(100 - pctSpent, (b.held / b.limit) * 100);
   const remaining = Math.max(0, b.limit - b.spent - b.held);
-  const tone = pctSpent + pctHeld >= 90 ? "text-bad" : pctSpent + pctHeld >= 70 ? "text-warn" : "text-ok";
+  const used = pctSpent + pctHeld;
+  const tone = used >= 90 ? "text-bad" : used >= 70 ? "text-warn" : "text-ink-2";
   return (
-    <div className="card p-4">
-      <div className="flex items-baseline justify-between gap-2">
-        <h3 className="font-semibold capitalize">{b.category === "*" ? "All categories" : b.category.replace("_", " ")}</h3>
-        <span className="text-xs text-muted">per {b.period} (rolling)</span>
+    <div className="grid gap-x-8 gap-y-3 px-5 py-4 md:grid-cols-[minmax(160px,220px)_minmax(0,1fr)_200px] md:items-center">
+      <div>
+        <h3 className="text-[15px] font-semibold capitalize">{name(b)}</h3>
+        <p className="text-[12.5px] text-ink-3">per {b.period}, rolling</p>
       </div>
-      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-line">
-        <div className="bg-ok" style={{ width: `${pctSpent}%` }} title={`Spent ${money(b.spent)}`} />
-        <div
-          className="bg-warn"
-          style={{ width: `${pctHeld}%`, backgroundImage: "repeating-linear-gradient(45deg,transparent 0 4px,rgba(0,0,0,.25) 4px 8px)" }}
-          title={`Held ${money(b.held)}`}
-        />
-      </div>
-      <div className="mt-2 flex flex-wrap justify-between gap-2 text-sm">
-        <span>
-          <span className="text-ok">{money(b.spent)}</span> spent
+      <div>
+        <div className="flex h-2.5 overflow-hidden rounded-full bg-[#e7e1d3]">
+          <div className="bg-ok" style={{ width: `${pctSpent}%` }} title={`Spent ${money(b.spent)}`} />
+          <div
+            className="bg-[#d0912f]"
+            style={{ width: `${pctHeld}%`, backgroundImage: "repeating-linear-gradient(45deg,transparent 0 3px,rgba(255,255,255,.35) 3px 6px)" }}
+            title={`Held ${money(b.held)}`}
+          />
+        </div>
+        <p className="mt-1.5 text-[12.5px] text-ink-2">
+          <span className="figure">{money(b.spent)}</span> spent
           {b.held > 0 && (
             <>
               {" "}
-              · <span className="text-warn">{money(b.held)}</span> held
+              · <span className="figure text-warn">{money(b.held)}</span> held, waiting on you
             </>
           )}
-        </span>
-        <span className={tone}>
-          {money(remaining)} left of {money(b.limit)}
-        </span>
+        </p>
       </div>
+      <div className="md:text-right">
+        <div className={`figure font-mono text-[16px] font-medium ${tone}`}>{money(remaining)}</div>
+        <div className="figure text-[12.5px] text-ink-3">left of {money(b.limit)}</div>
+      </div>
+    </div>
+  );
+}
+
+function ChartCard({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
+  return (
+    <div className="sheet min-w-0 p-5">
+      <h3 className="font-serif text-[18px] leading-tight font-medium">{title}</h3>
+      {note && <p className="mt-0.5 text-[13px] text-ink-3">{note}</p>}
+      <div className="mt-3">{children}</div>
     </div>
   );
 }
@@ -79,12 +94,11 @@ export default function BudgetsPage() {
     if (!budgets?.length) return null;
     const data = budgets.map((b) => ({ label: label(b), spent: b.spent, held: b.held, remaining: Math.max(0, b.limit - b.spent - b.held) }));
     return {
-      title: { text: "Spent vs. limit" },
       data,
       series: [
-        { type: "bar", direction: "horizontal", xKey: "label", yKey: "spent", yName: "Spent", stacked: true, fill: CHART_COLORS.ok, cornerRadius: 4 },
+        { type: "bar", direction: "horizontal", xKey: "label", yKey: "spent", yName: "Spent", stacked: true, fill: CHART_COLORS.ok },
         { type: "bar", direction: "horizontal", xKey: "label", yKey: "held", yName: "Held for approval", stacked: true, fill: CHART_COLORS.warn },
-        { type: "bar", direction: "horizontal", xKey: "label", yKey: "remaining", yName: "Remaining", stacked: true, fill: CHART_COLORS.line },
+        { type: "bar", direction: "horizontal", xKey: "label", yKey: "remaining", yName: "Remaining", stacked: true, fill: CHART_COLORS.empty },
       ],
       axes: [
         { type: "category", position: "left" },
@@ -98,11 +112,18 @@ export default function BudgetsPage() {
     if (!summary) return null;
     const data = summary.daily.map((d) => ({ ...d, day: new Date(d.date + "T12:00:00Z").toLocaleDateString(undefined, { weekday: "short" }) }));
     return {
-      title: { text: "Last 7 days: captured spend and blocked attempts" },
       data,
       series: [
-        { type: "bar", xKey: "day", yKey: "paid", yName: "Captured ($)", fill: CHART_COLORS.shield, cornerRadius: 4 },
-        { type: "line", xKey: "day", yKey: "blocked", yName: "Blocked attempts", stroke: CHART_COLORS.bad, marker: { fill: CHART_COLORS.bad } },
+        { type: "bar", xKey: "day", yKey: "paid", yName: "Captured ($)", fill: CHART_COLORS.accent, cornerRadius: 2 },
+        {
+          type: "line",
+          xKey: "day",
+          yKey: "blocked",
+          yName: "Blocked attempts",
+          stroke: CHART_COLORS.bad,
+          strokeWidth: 2,
+          marker: { fill: CHART_COLORS.bad, stroke: PALETTE.sheet, strokeWidth: 2, size: 9 },
+        },
       ],
       axes: [
         { type: "category", position: "bottom" },
@@ -117,7 +138,6 @@ export default function BudgetsPage() {
     if (!summary) return null;
     const d = summary.decisions7d;
     return {
-      title: { text: "Decisions (7 days)" },
       data: [
         { label: "Approved", value: d.approve },
         { label: "Asked you", value: d.askHuman },
@@ -128,10 +148,14 @@ export default function BudgetsPage() {
           type: "donut",
           angleKey: "value",
           legendItemKey: "label",
-          innerRadiusRatio: 0.62,
+          innerRadiusRatio: 0.66,
           fills: [CHART_COLORS.ok, CHART_COLORS.warn, CHART_COLORS.bad],
-          strokeWidth: 0,
-          innerLabels: [{ text: String(d.approve + d.askHuman + d.block), fontSize: 22, fontWeight: "bold", color: "#e6ebf5" }, { text: "requests", color: "#8b98b8" }],
+          strokes: [PALETTE.sheet],
+          strokeWidth: 2,
+          innerLabels: [
+            { text: String(d.approve + d.askHuman + d.block), fontSize: 26, fontWeight: 500, color: PALETTE.ink },
+            { text: "requests", fontSize: 12, color: PALETTE.ink3 },
+          ],
         },
       ],
       legend: { position: "bottom" },
@@ -141,56 +165,62 @@ export default function BudgetsPage() {
   const categoryChart = useMemo<AgChartOptions | null>(() => {
     if (!summary?.spendByCategory7d.length) return null;
     return {
-      title: { text: "Where the money went (7 days)" },
       data: summary.spendByCategory7d.map((c) => ({ ...c, category: c.category.replace("_", " ") })),
-      series: [{ type: "donut", angleKey: "spent", legendItemKey: "category", innerRadiusRatio: 0.62, strokeWidth: 0 }],
+      series: [{ type: "donut", angleKey: "spent", legendItemKey: "category", innerRadiusRatio: 0.66, strokes: [PALETTE.sheet], strokeWidth: 2 }],
       legend: { position: "bottom" },
     };
   }, [summary]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Budgets</h1>
-        <p className="text-sm text-muted">Spent vs. limit for every budget in your active policy. Held funds count against the budget until they are captured or voided.</p>
-      </div>
+    <div>
+      <PageHeader title="Budgets">
+        How much of each budget in your policy is gone. Money PayPal is holding for your approval counts against a budget until it&apos;s captured or released.
+      </PageHeader>
 
       {budgets && budgets.length === 0 && (
-        <div className="card p-6 text-sm">
-          No budgets in your active policy. Add one on the{" "}
-          <Link href="/policies" className="text-shield underline">
+        <div className="sheet mb-8 p-5 text-[14.5px]">
+          Your policy has no budgets yet. Add one on the{" "}
+          <Link href="/policies" className="link">
             Policies
           </Link>{" "}
-          page, e.g. “Max $150 a week on groceries”.
+          page, for example <span className="font-serif italic">“Max $150 a week on groceries.”</span>
         </div>
       )}
-      <section className="grid gap-3 md:grid-cols-2">{budgets?.map((b) => <BudgetBar key={`${b.category}-${b.period}`} b={b} />)}</section>
+      {budgets && budgets.length > 0 && (
+        <section className="sheet mb-10 divide-y divide-rule" aria-label="Budgets">
+          {budgets.map((b) => (
+            <BudgetRow key={`${b.category}-${b.period}`} b={b} />
+          ))}
+        </section>
+      )}
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        {budgetChart && (
-          <div className="card min-w-0 p-3">
-            <Chart options={budgetChart} height={Math.max(200, 90 + (budgets?.length ?? 1) * 50)} />
-          </div>
-        )}
+      <h2 className="section-title mb-4">The last seven days</h2>
+      <section className="grid gap-5 lg:grid-cols-2">
         {dailyChart && (
-          <div className="card min-w-0 p-3">
+          <ChartCard title="Captured spend and blocked attempts" note="Bars are dollars captured; the line counts blocked attempts.">
             <Chart options={dailyChart} />
-          </div>
+          </ChartCard>
         )}
         {decisionsChart && (
-          <div className="card min-w-0 p-3">
+          <ChartCard title="How requests were decided">
             <Chart options={decisionsChart} />
-          </div>
+          </ChartCard>
         )}
         {categoryChart && (
-          <div className="card min-w-0 p-3">
+          <ChartCard title="Where the money went">
             <Chart options={categoryChart} />
-          </div>
+          </ChartCard>
+        )}
+        {budgetChart && (
+          <ChartCard title="Spent against each limit">
+            <Chart options={budgetChart} height={Math.max(200, 90 + (budgets?.length ?? 1) * 50)} />
+          </ChartCard>
         )}
       </section>
       {summary && (
-        <p className="text-xs text-muted">
-          {money(summary.last7d.spent)} captured and {summary.last7d.blocked} attempts blocked in the last 7 days. Charts by AG Charts.
+        <p className="mt-6 text-[13px] text-ink-3">
+          <span className="figure">{money(summary.last7d.spent)}</span> captured and <span className="figure">{summary.last7d.blocked}</span> attempts blocked in the
+          last 7 days. Charts by AG Charts.
         </p>
       )}
     </div>

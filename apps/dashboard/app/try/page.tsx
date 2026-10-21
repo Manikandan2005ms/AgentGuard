@@ -3,6 +3,7 @@
 import type { DemoRunStatus, PaymentRequestDTO } from "@agentguard/shared";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
 import { PaymentCard } from "@/components/PaymentCard";
 import { api } from "@/lib/api";
 import { useLiveEvents } from "@/lib/useLiveEvents";
@@ -23,18 +24,19 @@ interface Run {
   finishedAt: string | null;
 }
 
-const ICON: Record<string, string> = { attack: "🕵️", approval: "📱", ops: "🧰", unguarded: "💸" };
-
+// The agent's log marks each line with an emoji; the console colours by it.
 function lineColor(line: string): string {
-  if (line.startsWith("⛔")) return "text-red-400";
-  if (line.startsWith("✅")) return "text-green-400";
-  if (line.startsWith("📱")) return "text-amber-300";
-  if (line.startsWith("💳")) return "text-yellow-300";
-  if (line.startsWith("🔧")) return "text-fuchsia-300";
-  if (line.startsWith("🤖")) return "text-cyan-300";
-  if (/^[─-]+$/.test(line)) return "text-muted";
-  return "text-slate-300";
+  if (line.startsWith("⛔")) return "text-[#f2a08c]";
+  if (line.startsWith("✅")) return "text-[#a9d39b]";
+  if (line.startsWith("📱")) return "text-[#efc677]";
+  if (line.startsWith("💳")) return "text-[#e6d391]";
+  if (line.startsWith("🔧")) return "text-[#cfb0e3]";
+  if (line.startsWith("🤖")) return "text-[#9fc6d9]";
+  if (/^[─-]+$/.test(line)) return "text-[#6f6a5f]";
+  return "text-[#ddd7c9]";
 }
+
+const STATUS_DOT: Record<string, string> = { running: "bg-[#efc677] animate-pulse", finished: "bg-[#a9d39b]", failed: "bg-[#f2a08c]" };
 
 export default function TryPage() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
@@ -122,7 +124,7 @@ export default function TryPage() {
     setBusy("reset");
     try {
       await api("/api/demo/reset", { method: "POST" });
-      setNotice("Demo reset: sample policy restored, payments cleared, kill switch off.");
+      setNotice("Demo reset. The sample policy is back, payments are cleared and the kill switch is off.");
     } catch (e) {
       setNotice(e instanceof Error ? e.message : String(e));
     } finally {
@@ -134,84 +136,85 @@ export default function TryPage() {
   const active = scenarios.find((s) => s.id === run?.scenario);
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Try AgentGuard</h1>
-          <p className="max-w-2xl text-sm text-muted">
-            Each button runs a real agent on the server against the live AgentGuard API and the demo stores. Watch its log here and its payments land on the{" "}
-            <Link href="/" className="text-shield underline">
-              Live
-            </Link>{" "}
-            and{" "}
-            <Link href="/audit" className="text-shield underline">
-              Audit
-            </Link>{" "}
-            pages. No terminal needed.
-          </p>
-        </div>
-        <button className="btn btn-ghost" disabled={busy !== null || running} onClick={reset}>
-          {busy === "reset" ? "Resetting…" : "↺ Reset demo"}
-        </button>
-      </div>
-      {notice && <div className="card border-shield/40 p-3 text-sm">{notice}</div>}
+    <div>
+      <PageHeader
+        title="Try it"
+        aside={
+          <button className="btn btn-quiet" disabled={busy !== null || running} onClick={reset}>
+            {busy === "reset" ? "Resetting…" : "Reset demo"}
+          </button>
+        }
+      >
+        Each scenario runs a real agent on the server, against the live AgentGuard API and the demo stores. Its log streams on the right, and its payments
+        also land on the{" "}
+        <Link href="/" className="link">
+          Live
+        </Link>{" "}
+        and{" "}
+        <Link href="/audit" className="link">
+          Audit log
+        </Link>{" "}
+        pages. No terminal needed.
+      </PageHeader>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
-        <section className="min-w-0 space-y-3">
-          {scenarios.map((s) => (
-            <article key={s.id} className={`card p-4 ${run?.scenario === s.id ? "border-shield/50" : ""}`}>
-              <div className="flex items-start gap-3">
-                <span className="text-2xl" aria-hidden>
-                  {ICON[s.id] ?? "▶"}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-semibold">{s.title}</h2>
-                  <p className="mt-1 text-sm text-muted">{s.story}</p>
-                  <p className="mt-2 text-sm">
-                    <span className="text-muted">Expect: </span>
+      {notice && <div className="sheet mb-6 border-l-[3px] !border-l-accent px-4 py-3 text-[14px]">{notice}</div>}
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <ol className="min-w-0 space-y-3">
+          {scenarios.map((s, i) => {
+            const current = run?.scenario === s.id;
+            const unguarded = s.id === "unguarded";
+            return (
+              <li key={s.id} className={`sheet p-5 ${current ? "!border-ink" : ""}`}>
+                <div className="flex items-baseline gap-3">
+                  <span className="figure font-mono text-[12px] text-ink-3">{String(i + 1).padStart(2, "0")}</span>
+                  <h2 className="font-serif text-[20px] leading-tight font-medium">{s.title}</h2>
+                </div>
+                <div className="mt-2 pl-[30px]">
+                  <p className="text-[14.5px] text-ink-2">{s.story}</p>
+                  <p className="mt-3 text-[14px]">
+                    <span className="font-semibold">What should happen: </span>
                     {s.expect}
                   </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <button className={`btn btn-sm ${unguarded ? "btn-reject" : "btn-primary"}`} disabled={busy !== null || running} onClick={() => start(s.id)}>
+                      {busy === s.id ? "Starting…" : running && current ? "Running…" : unguarded ? "Run without AgentGuard" : "Run"}
+                    </button>
+                    {unguarded && storesUrl && (
+                      <a className="link text-[13px]" href={`${storesUrl}/orders`} target="_blank" rel="noreferrer">
+                        See what got charged ↗
+                      </a>
+                    )}
+                    {s.id === "ops" && storesUrl && (
+                      <a className="link text-[13px]" href={`${storesUrl}/freshcart/support`} target="_blank" rel="noreferrer">
+                        Open the support inbox ↗
+                      </a>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="mt-3 flex items-center gap-2 pl-10">
-                <button className={`btn ${s.id === "unguarded" ? "btn-bad" : "btn-primary"}`} disabled={busy !== null || running} onClick={() => start(s.id)}>
-                  {busy === s.id ? "Starting…" : running && run?.scenario === s.id ? "Running…" : "▶ Run"}
-                </button>
-                {s.id === "unguarded" && storesUrl && (
-                  <a className="text-xs text-muted underline" href={`${storesUrl}/orders`} target="_blank" rel="noreferrer">
-                    See what was charged ↗
-                  </a>
-                )}
-                {s.id === "ops" && storesUrl && (
-                  <a className="text-xs text-muted underline" href={`${storesUrl}/freshcart/support`} target="_blank" rel="noreferrer">
-                    Open the inbox ↗
-                  </a>
-                )}
-              </div>
-            </article>
-          ))}
-        </section>
+              </li>
+            );
+          })}
+        </ol>
 
-        <section className="min-w-0 space-y-3">
-          <div className="card overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-line px-4 py-2 text-sm">
-              <span
-                className={`h-2 w-2 rounded-full ${running ? "animate-pulse bg-warn" : run?.status === "finished" ? "bg-ok" : run?.status === "failed" ? "bg-bad" : "bg-line"}`}
-              />
-              <span className="font-semibold">{active ? active.title : "Agent console"}</span>
-              <span className="text-muted">{run ? run.status : "idle"}</span>
+        <section className="min-w-0 space-y-8">
+          <div className="overflow-hidden rounded-md border border-night bg-night shadow-[0_8px_24px_-12px_rgba(30,25,15,0.45)]">
+            <div className="flex items-center gap-3 border-b border-white/10 px-4 py-2.5 text-[13px] text-[#ddd7c9]">
+              <span className={`h-2 w-2 rounded-full ${STATUS_DOT[run?.status ?? ""] ?? "bg-[#5d594f]"}`} />
+              <span className="font-medium">{active ? active.title : "Agent console"}</span>
+              <span className="text-[#8f897b]">{run ? run.status : "idle"}</span>
               {running && (
-                <button className="btn btn-ghost ml-auto !px-2 !py-0.5 !text-xs" onClick={stop}>
+                <button className="ml-auto rounded-[4px] border border-white/20 px-2.5 py-1 text-[12px] hover:bg-white/10" onClick={stop}>
                   Stop
                 </button>
               )}
             </div>
-            <div ref={consoleRef} className="h-[360px] overflow-auto bg-[#05080f] p-4 font-mono text-[12.5px] leading-relaxed">
+            <div ref={consoleRef} className="h-[420px] overflow-auto p-4 font-mono text-[12.5px] leading-[1.7]">
               {lines.length === 0 ? (
-                <p className="text-muted">Pick a scenario to run. The agent&apos;s log streams here.</p>
+                <p className="text-[#8f897b]">Pick a scenario and press Run. The agent&apos;s log will stream here.</p>
               ) : (
                 lines.map((l, i) => (
-                  <div key={i} className={`whitespace-pre-wrap break-words ${lineColor(l)}`}>
+                  <div key={i} className={`break-words whitespace-pre-wrap ${lineColor(l)}`}>
                     {l}
                   </div>
                 ))
@@ -220,11 +223,13 @@ export default function TryPage() {
           </div>
 
           {payments.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted">Decisions from this run</h2>
-              {payments.map((p) => (
-                <PaymentCard key={p.id} p={p} fresh />
-              ))}
+            <div>
+              <h2 className="section-title mb-4">What AgentGuard decided</h2>
+              <div className="space-y-3">
+                {payments.map((p) => (
+                  <PaymentCard key={p.id} p={p} fresh />
+                ))}
+              </div>
             </div>
           )}
         </section>

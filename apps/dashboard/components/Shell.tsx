@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, type MeResponse } from "@/lib/api";
-import { KillSwitch } from "./KillSwitch";
+import { FreezeButton, FrozenBanner, useKillSwitch } from "./KillSwitch";
 
 const NAV = [
   { href: "/", label: "Live" },
-  { href: "/try", label: "▶ Try it" },
+  { href: "/try", label: "Try it" },
   { href: "/policies", label: "Policies" },
   { href: "/audit", label: "Audit log" },
   { href: "/budgets", label: "Budgets" },
@@ -16,20 +16,21 @@ const NAV = [
   { href: "/setup", label: "Setup" },
 ];
 
-export function Shield({ className = "h-7 w-7" }: { className?: string }) {
+/** A shield with a bar across it: the gate every agent payment passes through. */
+export function Mark({ className = "h-6 w-6" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
-      <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="#22d3ee" fillOpacity=".15" stroke="#22d3ee" strokeWidth="1.6" />
-      <path d="m8.5 12 2.5 2.5 4.5-5" fill="none" stroke="#22d3ee" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 2.2 4.2 5v6.3c0 4.8 3.2 8.9 7.8 10.5 4.6-1.6 7.8-5.7 7.8-10.5V5L12 2.2Z" fill="currentColor" />
+      <rect x="7.6" y="10.4" width="8.8" height="2.4" rx="1.2" fill="var(--color-paper)" />
     </svg>
   );
 }
 
-function Badge({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+function Fact({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
-    <span className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${ok ? "border-ok/30 text-ok" : "border-warn/30 text-warn"}`}>
+    <li className="mark" style={{ "--dot": ok ? "var(--color-ok)" : "var(--color-warn)" } as React.CSSProperties}>
       {children}
-    </span>
+    </li>
   );
 }
 
@@ -37,6 +38,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [offline, setOffline] = useState(false);
+  const killSwitch = useKillSwitch();
 
   useEffect(() => {
     api<MeResponse>("/api/me")
@@ -48,47 +50,65 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }, [path]);
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-line bg-ink/85 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Link href="/" className="flex items-center gap-2">
-            <Shield />
-            <span className="text-lg font-bold tracking-tight">
-              Agent<span className="text-shield">Guard</span>
-            </span>
-          </Link>
-          <nav className="order-3 flex w-full gap-1 overflow-x-auto md:order-none md:w-auto">
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-30 border-b border-rule bg-paper/95 backdrop-blur-sm">
+        <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
+          <div className="flex items-center gap-4 pt-4 pb-2.5">
+            <Link href="/" className="flex items-center gap-2 text-ink">
+              <Mark />
+              <span className="font-serif text-[23px] font-semibold leading-none tracking-[-0.01em]">AgentGuard</span>
+            </Link>
+            <span className="hidden border-l border-rule-2 pl-4 font-serif text-[15px] italic text-ink-2 md:inline">a spending firewall for AI agents</span>
+            <div className="ml-auto flex items-center gap-6">
+              {me && (
+                <ul className="hidden items-center gap-4 lg:flex" aria-label="Environment">
+                  <Fact ok={me.modes.paypal === "sandbox"}>{me.modes.paypal === "sandbox" ? "PayPal sandbox" : "Mock PayPal"}</Fact>
+                  <Fact ok={me.modes.llm.enabled}>{me.modes.llm.enabled ? "Claude checks on" : "Heuristics only"}</Fact>
+                  <Fact ok={me.user.telegramConnected}>{me.user.telegramConnected ? "Phone linked" : "No phone linked"}</Fact>
+                </ul>
+              )}
+              <FreezeButton {...killSwitch} />
+            </div>
+          </div>
+          <nav className="-mb-px flex gap-5 overflow-x-auto [scrollbar-width:none] sm:gap-7 [&::-webkit-scrollbar]:hidden" aria-label="Sections">
             {NAV.map((n) => {
               const active = n.href === "/" ? path === "/" : path.startsWith(n.href);
               return (
                 <Link
                   key={n.href}
                   href={n.href}
-                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium ${active ? "bg-panel-2 text-text" : "text-muted hover:text-text"}`}
+                  aria-current={active ? "page" : undefined}
+                  className={`shrink-0 whitespace-nowrap border-b-2 py-2.5 text-[14px] ${
+                    active ? "border-ink font-semibold text-ink" : "border-transparent text-ink-2 hover:border-rule-2 hover:text-ink"
+                  }`}
                 >
                   {n.label}
                 </Link>
               );
             })}
           </nav>
-          <div className="ml-auto flex items-center gap-2">
-            {me && (
-              <div className="hidden items-center gap-1.5 lg:flex">
-                <Badge ok={me.modes.paypal === "sandbox"}>PayPal {me.modes.paypal}</Badge>
-                <Badge ok={me.modes.llm.enabled}>{me.modes.llm.enabled ? "AI: Claude" : "AI: heuristics"}</Badge>
-                <Badge ok={me.user.telegramConnected}>{me.user.telegramConnected ? "Phone linked" : "No phone"}</Badge>
-              </div>
-            )}
-            <KillSwitch />
-          </div>
         </div>
       </header>
+
+      {killSwitch.frozen && <FrozenBanner />}
       {offline && (
-        <div className="border-b border-bad/40 bg-bad/10 px-4 py-2 text-center text-sm text-bad">
-          Can&apos;t reach the AgentGuard API. Is it running? (npm run dev)
+        <div className="border-b border-rule bg-warn-wash">
+          <p className="mx-auto max-w-[1240px] px-4 py-2.5 text-[14px] text-warn sm:px-8">
+            The AgentGuard API isn&apos;t answering. Start it with <code>npm run dev</code>, then reload this page.
+          </p>
         </div>
       )}
-      <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+
+      <main className="mx-auto w-full max-w-[1240px] flex-1 px-4 py-8 sm:px-8 sm:py-10">{children}</main>
+
+      <footer className="border-t border-rule">
+        <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-1 px-4 py-5 text-[13px] text-ink-3 sm:px-8">
+          <span>Rules are enforced by plain code. AI can raise a payment&apos;s risk, never lower it.</span>
+          <a className="ml-auto hover:text-ink" href="https://github.com/Manikandan2005ms/AgentGuard" target="_blank" rel="noreferrer">
+            Source on GitHub
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

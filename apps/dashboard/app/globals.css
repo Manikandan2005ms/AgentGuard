@@ -1,95 +1,253 @@
 @import "tailwindcss";
 
+/*
+ * AgentGuard reads like a ledger: warm paper, black ink, one blue for links and focus,
+ * and three muted signal colours for the decisions (approve / ask / block).
+ */
 @theme {
-  --color-ink: #070b14;
-  --color-panel: #0d1424;
-  --color-panel-2: #121b2f;
-  --color-line: #1f2a44;
-  --color-muted: #8b98b8;
-  --color-text: #e6ebf5;
-  --color-shield: #22d3ee;
-  --color-ok: #22c55e;
-  --color-warn: #f59e0b;
-  --color-bad: #ef4444;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --color-paper: #f3efe6;
+  --color-sheet: #fbf9f4;
+  --color-ink: #1d1c19;
+  --color-ink-2: #59554c;
+  --color-ink-3: #8a8578;
+  --color-rule: #ddd6c6;
+  --color-rule-2: #c4bba7;
+  --color-accent: #24408f;
+  --color-accent-wash: #e4e8f2;
+  --color-ok: #2e6a3c;
+  --color-ok-wash: #e3ecdc;
+  --color-warn: #995a0b;
+  --color-warn-wash: #f6e9cf;
+  --color-bad: #ad3826;
+  --color-bad-wash: #f6e1da;
+  --color-night: #1f1e1b;
+  --color-highlight: #f7e3a1;
 }
 
-html,
+@theme inline {
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, Menlo, Consolas, monospace;
+}
+
+html {
+  color-scheme: light;
+}
+
 body {
-  background: var(--color-ink);
-  color: var(--color-text);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-size: 15px;
+  line-height: 1.55;
 }
 
-body {
-  background-image: radial-gradient(1200px 500px at 10% -10%, rgba(34, 211, 238, 0.08), transparent 60%),
-    radial-gradient(900px 400px at 100% 0%, rgba(99, 102, 241, 0.07), transparent 60%);
-  min-height: 100vh;
+::selection {
+  background: var(--color-highlight);
+  color: var(--color-ink);
 }
 
-.card {
-  background: var(--color-panel);
-  border: 1px solid var(--color-line);
-  border-radius: 14px;
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+/* ---------- Type ---------- */
+
+.page-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 1.6rem + 1.6vw, 2.75rem);
+  font-weight: 450;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+.section-title {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.lede {
+  color: var(--color-ink-2);
+  max-width: 62ch;
+}
+.kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+.figure {
+  font-variant-numeric: tabular-nums;
+}
+.link {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ---------- Surfaces ---------- */
+
+.sheet {
+  background: var(--color-sheet);
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(60, 50, 30, 0.04);
+}
+
+/* ---------- Buttons ---------- */
 
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 10px;
-  padding: 7px 12px;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 5px;
   font-size: 14px;
-  font-weight: 600;
-  transition: filter 0.15s, transform 0.05s;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
-}
-.btn:active {
-  transform: translateY(1px);
+  transition:
+    background-color 0.12s,
+    border-color 0.12s,
+    color 0.12s;
 }
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
+.btn-sm {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 13px;
+}
 .btn-primary {
-  background: var(--color-shield);
-  color: #04121a;
+  background: var(--color-ink);
+  color: var(--color-sheet);
 }
-.btn-ok {
+.btn-primary:hover:not(:disabled) {
+  background: #3a3832;
+}
+.btn-approve {
   background: var(--color-ok);
-  color: #04140a;
+  color: #fff;
 }
-.btn-bad {
+.btn-approve:hover:not(:disabled) {
+  background: #255732;
+}
+.btn-reject {
   background: transparent;
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: var(--color-bad);
+  border-color: color-mix(in srgb, var(--color-bad) 45%, transparent);
 }
-.btn-ghost {
-  background: var(--color-panel-2);
-  color: var(--color-text);
-  border: 1px solid var(--color-line);
+.btn-reject:hover:not(:disabled) {
+  background: var(--color-bad-wash);
 }
-.btn:hover:not(:disabled) {
-  filter: brightness(1.1);
+.btn-quiet {
+  background: var(--color-sheet);
+  color: var(--color-ink);
+  border-color: var(--color-rule-2);
+}
+.btn-quiet:hover:not(:disabled) {
+  background: var(--color-paper);
+  border-color: var(--color-ink-3);
 }
 
-@keyframes flash-in {
+/* ---------- Decision stamps and status marks ---------- */
+
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px 0;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--color-ink-2);
+  white-space: nowrap;
+}
+.mark::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dot, var(--color-ink-3));
+}
+
+/* ---------- Form fields ---------- */
+
+.field {
+  width: 100%;
+  background: var(--color-sheet);
+  border: 1px solid var(--color-rule-2);
+  border-radius: 5px;
+  padding: 7px 11px;
+  font-size: 14px;
+  outline: none;
+}
+.field:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-wash);
+}
+
+/* Lined paper for the rules editor: the lines sit on the text's baseline grid. */
+.lined {
+  --line: 30px;
+  line-height: var(--line);
+  padding: 4px 14px calc(var(--line) / 2);
+  background-color: var(--color-sheet);
+  background-image: linear-gradient(transparent calc(var(--line) - 1px), #e8e1d1 calc(var(--line) - 1px));
+  background-size: 100% var(--line);
+  background-position: 0 4px;
+  background-attachment: local;
+}
+
+/* New entries arrive with a highlighter swipe that fades. */
+@keyframes highlight {
   from {
-    opacity: 0;
-    transform: translateY(-6px);
-    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6);
+    background-color: var(--color-highlight);
   }
   to {
-    opacity: 1;
-    transform: none;
-    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0);
+    background-color: var(--color-sheet);
   }
 }
-.flash-in {
-  animation: flash-in 0.6s ease-out;
+.just-in {
+  animation: highlight 2.4s ease-out;
 }
 
-/* AG Grid inside our dark panels */
-.ag-theme-agentguard {
-  --ag-font-family: var(--font-sans);
+/* ---------- AG Grid rows in the policy simulator ---------- */
+
+.ag-row.sim-stricter {
+  background-color: #fbf1de;
+}
+.ag-row.sim-looser {
+  background-color: #eaeef7;
 }

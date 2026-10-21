@@ -38,11 +38,11 @@ interface Simulation {
 const Pill = (p: ICellRendererParams<Result, DecisionType>) => (p.value ? <DecisionPill decision={p.value} /> : null);
 const Change = (p: ICellRendererParams<Result, Result["change"]>) =>
   p.value === "stricter" ? (
-    <span className="font-semibold text-warn">▲ stricter</span>
+    <span className="font-semibold text-warn">Stricter</span>
   ) : p.value === "looser" ? (
-    <span className="font-semibold text-sky-300">▼ looser</span>
+    <span className="font-semibold text-accent">Looser</span>
   ) : (
-    <span className="text-muted">same</span>
+    <span className="text-ink-3">Same</span>
   );
 
 /** "What would this policy have done?" Replays the last 30 days of agent purchases (R5). */
@@ -66,12 +66,12 @@ export default function PolicySimulator({ policyId }: { policyId: string }) {
 
   const columns = useMemo<ColDef<Result>[]>(
     () => [
-      { field: "createdAt", headerName: "When", width: 120, valueFormatter: (p) => new Date(p.value).toLocaleDateString(undefined, { month: "short", day: "numeric" }) },
+      { field: "createdAt", headerName: "When", width: 100, valueFormatter: (p) => new Date(p.value).toLocaleDateString(undefined, { month: "short", day: "numeric" }) },
       { field: "item", headerName: "Purchase", flex: 1, minWidth: 160 },
       { field: "amount", headerName: "Amount", width: 95, type: "rightAligned", valueFormatter: (p) => money(p.value) },
-      { field: "actual", headerName: "Actual", width: 115, cellRenderer: Pill },
-      { field: "simulated", headerName: "New policy", width: 120, cellRenderer: Pill },
-      { field: "change", headerName: "", width: 100, cellRenderer: Change },
+      { field: "actual", headerName: "Was", width: 120, cellRenderer: Pill },
+      { field: "simulated", headerName: "Would be", width: 120, cellRenderer: Pill },
+      { field: "change", headerName: "", width: 90, cellRenderer: Change },
       { colId: "why", headerName: "Why", flex: 1.2, minWidth: 200, valueGetter: (p) => p.data?.reasons.join(" "), tooltipValueGetter: (p) => p.data?.reasons.join(" ") },
     ],
     [],
@@ -80,39 +80,41 @@ export default function PolicySimulator({ policyId }: { policyId: string }) {
   const rows = sim ? (onlyChanges ? sim.results.filter((r) => r.change !== "same") : sim.results) : [];
 
   return (
-    <div className="mt-4 rounded-lg border border-line bg-ink/40 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold">Policy simulator</span>
-        <span className="text-xs text-muted">Replay the last 30 days of agent purchases against these rules before you turn them on.</span>
-        <button className="btn btn-ghost ml-auto !py-1 !text-xs" disabled={busy} onClick={run}>
-          {busy ? "Replaying…" : sim ? "↻ Re-run" : "▶ Simulate"}
+    <div className="mt-5 rounded-[5px] border border-rule bg-paper/50 p-4">
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[14.5px] font-semibold">Try it on your history first</h3>
+          <p className="text-[13px] text-ink-2">Replays the last 30 days of agent purchases against these rules, before you turn them on.</p>
+        </div>
+        <button className="btn btn-sm btn-quiet" disabled={busy} onClick={run}>
+          {busy ? "Replaying…" : sim ? "Run again" : "Replay last 30 days"}
         </button>
       </div>
-      {error && <p className="mt-2 text-xs text-bad">{error}</p>}
+      {error && <p className="mt-2 text-[13px] text-bad">{error}</p>}
       {sim && (
         <>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-md border border-line px-2 py-1">{sim.summary.total} purchases replayed</span>
-            <span className="rounded-md border border-warn/40 px-2 py-1 text-warn">{sim.summary.stricter} would be stricter</span>
-            <span className="rounded-md border border-sky-400/40 px-2 py-1 text-sky-300">{sim.summary.looser} would be looser</span>
-            <span className="rounded-md border border-line px-2 py-1 text-muted">
-              New policy: {sim.summary.simulated.APPROVE} approve · {sim.summary.simulated.ASK_HUMAN} ask · {sim.summary.simulated.BLOCK} block
+          <p className="mt-3 text-[13.5px] text-ink-2">
+            Of <b className="figure text-ink">{sim.summary.total}</b> purchases, <b className="figure text-warn">{sim.summary.stricter}</b> would be handled more
+            strictly and <b className="figure text-accent">{sim.summary.looser}</b> more loosely. Under these rules:{" "}
+            <span className="figure">
+              {sim.summary.simulated.APPROVE} approved, {sim.summary.simulated.ASK_HUMAN} asked, {sim.summary.simulated.BLOCK} blocked.
             </span>
-            <label className="ml-auto flex items-center gap-1 text-muted">
-              <input type="checkbox" checked={onlyChanges} onChange={(e) => setOnlyChanges(e.target.checked)} /> only changes
-            </label>
-          </div>
+          </p>
+          <label className="mt-2 inline-flex items-center gap-2 text-[13px] text-ink-2">
+            <input type="checkbox" className="accent-[#24408f]" checked={onlyChanges} onChange={(e) => setOnlyChanges(e.target.checked)} /> Show only what
+            changes
+          </label>
           {rows.length === 0 ? (
-            <p className="mt-3 text-sm text-muted">{onlyChanges ? "No decisions would change." : "No purchases in the last 30 days."}</p>
+            <p className="mt-3 text-[14px] text-ink-2">{onlyChanges ? "No decisions would change." : "No purchases in the last 30 days."}</p>
           ) : (
-            <div className="mt-3 overflow-hidden rounded-lg border border-line" style={{ height: Math.min(360, 56 + rows.length * 42) }}>
+            <div className="mt-3" style={{ height: Math.min(360, 56 + rows.length * 42) }}>
               <AgGridReact<Result>
                 theme={gridTheme}
                 rowData={rows}
                 columnDefs={columns}
                 defaultColDef={{ sortable: true, resizable: true }}
                 getRowId={(p) => p.data.id}
-                rowClassRules={{ "bg-warn/5": (p) => p.data?.change === "stricter", "bg-sky-400/5": (p) => p.data?.change === "looser" }}
+                rowClassRules={{ "sim-stricter": (p) => p.data?.change === "stricter", "sim-looser": (p) => p.data?.change === "looser" }}
                 tooltipShowDelay={300}
               />
             </div>

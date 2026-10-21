@@ -2,22 +2,43 @@
 
 import type { AgChartOptions, AgChartTheme } from "ag-charts-community";
 import { AgCharts } from "ag-charts-react";
+import { sans } from "@/lib/fonts";
+import { PALETTE } from "@/lib/palette";
 
-/** AG Charts in the dashboard's dark theme (R4). */
+/** AG Charts on the dashboard's paper palette (R4). Also used for AG Grid's integrated charts. */
 
-export const CHART_COLORS = { ok: "#22c55e", warn: "#f59e0b", bad: "#ef4444", shield: "#22d3ee", line: "#1f2a44", muted: "#8b98b8" };
+export const CHART_COLORS = {
+  ok: PALETTE.okFill,
+  warn: PALETTE.warnFill,
+  bad: PALETTE.badFill,
+  accent: PALETTE.accentFill,
+  empty: "#e7e1d3",
+  ink: PALETTE.ink,
+  muted: PALETTE.ink3,
+};
+
+const SERIES = [PALETTE.accentFill, PALETTE.okFill, PALETTE.warnFill, PALETTE.badFill, "#7d6a9e", "#4e8a8a", "#a8714a"];
 
 export const chartTheme: AgChartTheme = {
-  baseTheme: "ag-default-dark",
-  palette: {
-    fills: [CHART_COLORS.shield, CHART_COLORS.ok, CHART_COLORS.warn, CHART_COLORS.bad, "#a78bfa", "#f472b6", "#60a5fa"],
-    strokes: [CHART_COLORS.shield, CHART_COLORS.ok, CHART_COLORS.warn, CHART_COLORS.bad, "#a78bfa", "#f472b6", "#60a5fa"],
+  baseTheme: "ag-default",
+  palette: { fills: SERIES, strokes: SERIES },
+  params: {
+    fontFamily: sans.style.fontFamily,
+    foregroundColor: PALETTE.ink,
+    textColor: PALETTE.ink,
+    subtleTextColor: PALETTE.ink2,
+    backgroundColor: PALETTE.sheet,
+    chartBackgroundColor: "transparent",
+    axisColor: PALETTE.rule2,
+    gridLineColor: "#ebe5d7",
+    accentColor: PALETTE.accent,
+    tooltipBackgroundColor: PALETTE.ink,
+    tooltipTextColor: PALETTE.sheet,
+    tooltipSubtleTextColor: "#cfc8b8",
   },
   overrides: {
     common: {
-      background: { fill: "transparent" },
-      title: { color: "#e6ebf5", fontSize: 14, fontWeight: 600 },
-      legend: { item: { label: { color: "#8b98b8" } } },
+      legend: { item: { label: { color: PALETTE.ink2, fontSize: 12.5 } } },
     },
   },
 };

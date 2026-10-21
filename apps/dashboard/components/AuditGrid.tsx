@@ -32,8 +32,10 @@ import { AgGridReact } from "ag-grid-react";
 import { AgChartsEnterpriseModule } from "ag-charts-enterprise";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, money } from "@/lib/api";
-import { gridTheme } from "@/lib/gridTheme";
+import { gridTheme, monoFamily } from "@/lib/gridTheme";
+import { PALETTE, riskColor } from "@/lib/palette";
 import { useLiveEvents } from "@/lib/useLiveEvents";
+import { chartTheme } from "./Charts";
 import { DecisionPill, StatusPill } from "./Pills";
 
 ModuleRegistry.registerModules([
@@ -67,20 +69,20 @@ const StatusCell = (p: Cell<Row["status"]>) => (p.data && p.value ? <StatusPill 
 function RiskCell(p: Cell<number>) {
   if (p.value == null) return null;
   const v = Math.round(p.value);
-  const color = v >= 70 ? "#ef4444" : v >= 35 ? "#f59e0b" : "#22c55e";
+  const color = riskColor(v);
   return (
-    <div className="flex h-full items-center gap-2">
-      <div className="h-1.5 w-16 overflow-hidden rounded bg-line">
-        <div style={{ width: `${v}%`, background: color }} className="h-full" />
-      </div>
-      <span style={{ color }} className="font-semibold">
+    <div className="flex h-full items-center gap-2.5">
+      <span style={{ color }} className="figure w-6 text-right font-semibold">
         {v}
       </span>
+      <div className="h-[3px] w-14 overflow-hidden rounded-full bg-rule">
+        <div style={{ width: `${v}%`, background: color }} className="h-full" />
+      </div>
     </div>
   );
 }
 
-const InjectionCell = (p: Cell<boolean>) => (p.data ? p.value ? <span className="font-semibold text-bad">⚠ yes</span> : <span className="text-muted">–</span> : null);
+const InjectionCell = (p: Cell<boolean>) => (p.data ? p.value ? <span className="font-semibold text-bad">Yes</span> : <span className="text-ink-3">–</span> : null);
 
 function ActionsCell(p: Cell) {
   const [busy, setBusy] = useState(false);
@@ -103,9 +105,9 @@ function ActionsCell(p: Cell) {
   const refundable = d.status === "PAID" && d.kind === "payment" && !!d.paypalCaptureId && !d.paypalCaptureId.startsWith("SEED-");
   if (refundable) {
     return (
-      <div className="flex h-full items-center gap-1" title={error ?? undefined}>
-        <button className="btn btn-ghost !px-2 !py-0.5 !text-xs" disabled={busy} onClick={() => act("refund")}>
-          {busy ? "Refunding…" : "↩ Refund"}
+      <div className="flex h-full items-center gap-1.5" title={error ?? undefined}>
+        <button className="btn btn-sm btn-quiet" disabled={busy} onClick={() => act("refund")}>
+          {busy ? "Refunding…" : "Refund"}
         </button>
         {error && <span className="text-[11px] text-bad">failed</span>}
       </div>
@@ -113,16 +115,22 @@ function ActionsCell(p: Cell) {
   }
   if (d.status !== "HELD") return null;
   return (
-    <div className="flex h-full items-center gap-1">
-      <button className="btn btn-ok !px-2 !py-0.5 !text-xs" disabled={busy} onClick={() => act("approve")}>
+    <div className="flex h-full items-center gap-1.5">
+      <button className="btn btn-sm btn-approve" disabled={busy} onClick={() => act("approve")}>
         Approve
       </button>
-      <button className="btn btn-bad !px-2 !py-0.5 !text-xs" disabled={busy} onClick={() => act("reject")}>
+      <button className="btn btn-sm btn-reject" disabled={busy} onClick={() => act("reject")}>
         Reject
       </button>
     </div>
   );
 }
+
+const OUTCOME = {
+  block: { word: "block", cls: "text-bad" },
+  ask: { word: "ask", cls: "text-warn" },
+  pass: { word: "pass", cls: "text-ok" },
+} as const;
 
 /** Master-detail row: every rule, signal and piece of evidence behind the decision. */
 function DetailRow({ data }: { data?: Row }) {
@@ -130,64 +138,67 @@ function DetailRow({ data }: { data?: Row }) {
   const fired = data.rulesFired.filter((r) => r.outcome !== "pass");
   const passed = data.rulesFired.filter((r) => r.outcome === "pass");
   return (
-    <div className="grid gap-4 whitespace-normal break-words bg-ink/60 p-4 text-xs leading-relaxed md:grid-cols-3">
+    <div className="grid gap-6 bg-paper px-5 py-4 text-[12.5px] leading-relaxed break-words whitespace-normal md:grid-cols-3">
       <div>
-        <h4 className="mb-2 font-semibold uppercase tracking-wide text-muted">Policy rules</h4>
+        <h4 className="mb-2 text-[12.5px] font-semibold text-ink-2">Policy rules</h4>
         {[...fired, ...passed].map((r) => (
           <div key={r.rule_id} className="mb-1 flex gap-2">
-            <span className={r.outcome === "block" ? "text-bad" : r.outcome === "ask" ? "text-warn" : "text-ok"}>
-              {r.outcome === "block" ? "⛔" : r.outcome === "ask" ? "📱" : "✓"}
-            </span>
+            <span className={`w-9 shrink-0 font-mono text-[11px] leading-[1.9] uppercase ${OUTCOME[r.outcome].cls}`}>{OUTCOME[r.outcome].word}</span>
             <span>
-              <span className="font-mono text-muted">{r.rule_id}</span> {r.detail}
+              <span className="font-mono text-[11.5px] text-ink-3">{r.rule_id}</span> {r.detail}
             </span>
           </div>
         ))}
-        {data.rulesFired.length === 0 && <p className="text-muted">No rules evaluated.</p>}
+        {data.rulesFired.length === 0 && <p className="text-ink-3">No rules evaluated.</p>}
       </div>
       <div>
-        <h4 className="mb-2 font-semibold uppercase tracking-wide text-muted">Risk signals · {data.riskScore}/100</h4>
+        <h4 className="mb-2 text-[12.5px] font-semibold text-ink-2">
+          Risk signals, <span className="figure">{data.riskScore}</span> of 100
+        </h4>
         {data.signals.map((s) => (
           <div key={s.id} className="mb-1 flex gap-2">
-            <span className="w-8 shrink-0 text-right font-semibold text-warn">+{s.points}</span>
+            <span className="figure w-9 shrink-0 text-right font-mono text-[11.5px] leading-[1.9] font-semibold text-warn">+{s.points}</span>
             <span>
-              {s.detail} <span className="text-muted">({s.source})</span>
+              {s.detail} <span className="text-ink-3">({s.source})</span>
             </span>
           </div>
         ))}
-        {data.signals.length === 0 && <p className="text-muted">No risk signals.</p>}
+        {data.signals.length === 0 && <p className="text-ink-3">No risk signals.</p>}
         {data.intentReason && (
           <p className="mt-3">
-            <span className="text-muted">Intent check:</span> {data.intentAligned === false ? "❌ " : data.intentAligned ? "✓ " : "? "}
+            <span className="font-semibold">Does it match the task? </span>
+            <span className={data.intentAligned === false ? "text-bad" : data.intentAligned ? "text-ok" : "text-ink-3"}>
+              {data.intentAligned === false ? "No. " : data.intentAligned ? "Yes. " : "Unsure. "}
+            </span>
             {data.intentReason}
           </p>
         )}
       </div>
       <div>
-        <h4 className="mb-2 font-semibold uppercase tracking-wide text-muted">Evidence & PayPal</h4>
+        <h4 className="mb-2 text-[12.5px] font-semibold text-ink-2">Evidence and PayPal</h4>
         {data.injectionEvidence.slice(0, 4).map((e, i) => (
           <div key={i} className="mb-2">
             <div className="font-mono text-[11px] text-bad">
               {e.hidden ? "hidden · " : ""}
               {e.technique}
             </div>
-            <pre className="whitespace-pre-wrap rounded border border-bad/30 bg-bad/5 p-1.5 font-mono text-[11px] text-red-300">{e.snippet}</pre>
+            <pre className="mt-0.5 rounded-[3px] bg-bad-wash p-1.5 font-mono text-[11px] whitespace-pre-wrap text-[#7a2618]">{e.snippet}</pre>
           </div>
         ))}
-        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 font-mono text-[11px]">
-          <dt className="text-muted">order</dt>
+        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-[11.5px]">
+          <dt className="text-ink-3">order</dt>
           <dd>{data.paypalOrderId ?? "–"}</dd>
-          <dt className="text-muted">auth</dt>
+          <dt className="text-ink-3">auth</dt>
           <dd>{data.paypalAuthId ?? "–"}</dd>
-          <dt className="text-muted">capture</dt>
+          <dt className="text-ink-3">capture</dt>
           <dd>{data.paypalCaptureId ?? "–"}</dd>
-          <dt className="text-muted">decided by</dt>
+          <dt className="text-ink-3">decided by</dt>
           <dd>{data.decidedBy}</dd>
         </dl>
         {data.kind === "paypal_tool" && (
           <div className="mt-3">
-            <div className="font-semibold text-sky-300">PayPal Agent Toolkit · {data.toolName}</div>
-            <pre className="mt-1 max-h-40 overflow-auto rounded border border-line bg-ink/70 p-1.5 font-mono text-[11px]">
+            <div className="font-semibold text-accent">PayPal Agent Toolkit · {data.toolName}</div>
+            <pre className="mt-1 max-h-40 overflow-auto rounded-[3px] border border-rule bg-sheet p-1.5 font-mono text-[11px]">
               {JSON.stringify({ args: data.toolArgs, result: data.toolResult }, null, 2)}
             </pre>
           </div>
@@ -200,6 +211,8 @@ function DetailRow({ data }: { data?: Row }) {
 const fmtMoney = (p: ValueFormatterParams<Row, number>) => (p.value == null ? "" : money(p.value, p.data?.currency ?? "USD"));
 const fmtTime = (p: ValueFormatterParams<Row, Date>) =>
   p.value ? p.value.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
+
+const ID_STYLE = { fontFamily: monoFamily, fontSize: "12px", color: PALETTE.ink2 };
 
 const GROUPS = [
   { label: "No grouping", cols: [] as string[] },
@@ -291,7 +304,7 @@ export default function AuditGrid() {
         width: 120,
         valueGetter: (p) => p.data?.signals.map((s) => s.points) ?? null,
         cellRenderer: "agSparklineCellRenderer",
-        cellRendererParams: { sparklineOptions: { type: "bar", direction: "vertical", fill: "#f59e0b", stroke: "#f59e0b" } },
+        cellRendererParams: { sparklineOptions: { type: "bar", direction: "vertical", fill: PALETTE.warnFill, stroke: PALETTE.warnFill } },
         sortable: false,
         filter: false,
         enableCellChangeFlash: false,
@@ -300,9 +313,9 @@ export default function AuditGrid() {
       { field: "injectionDetected", headerName: "Injection", width: 100, cellRenderer: InjectionCell, filter: "agSetColumnFilter", enableRowGroup: true },
       { field: "decidedBy", headerName: "Decided by", width: 110, filter: "agSetColumnFilter", enableRowGroup: true },
       { field: "explanation", headerName: "Explanation", flex: 1, minWidth: 320, tooltipField: "explanation", filter: "agTextColumnFilter" },
-      { field: "paypalOrderId", headerName: "PayPal order", width: 170, filter: "agTextColumnFilter" },
-      { field: "paypalAuthId", headerName: "Authorization", width: 170, hide: true },
-      { field: "paypalCaptureId", headerName: "Capture", width: 170, filter: "agTextColumnFilter" },
+      { field: "paypalOrderId", headerName: "PayPal order", width: 170, filter: "agTextColumnFilter", cellStyle: ID_STYLE },
+      { field: "paypalAuthId", headerName: "Authorization", width: 170, hide: true, cellStyle: ID_STYLE },
+      { field: "paypalCaptureId", headerName: "Capture", width: 170, filter: "agTextColumnFilter", cellStyle: ID_STYLE },
       {
         field: "reconciledAt",
         headerName: "Reconciled",
@@ -334,49 +347,57 @@ export default function AuditGrid() {
   }, []);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <input
+          type="search"
           value={quick}
           onChange={(e) => setQuick(e.target.value)}
-          placeholder="Search everything…"
-          className="w-64 rounded-lg border border-line bg-panel px-3 py-1.5 text-sm outline-none focus:border-shield"
+          placeholder="Search every column"
+          aria-label="Search the audit log"
+          className="field !w-64"
         />
-        <div className="flex max-w-full overflow-x-auto rounded-lg border border-line">
-          {GROUPS.map((g) => (
-            <button
-              key={g.label}
-              onClick={() => applyGroup(g.label)}
-              className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-medium ${group === g.label ? "bg-shield text-ink" : "bg-panel text-muted hover:text-text"}`}
-            >
-              {g.label === "No grouping" ? "Flat" : `By ${g.label.toLowerCase()}`}
-            </button>
-          ))}
+        <div className="flex max-w-full items-center gap-2">
+          <span className="text-[13px] text-ink-3">Group</span>
+          <div className="flex overflow-x-auto rounded-[5px] border border-rule-2 bg-sheet" role="group" aria-label="Group rows">
+            {GROUPS.map((g) => (
+              <button
+                key={g.label}
+                onClick={() => applyGroup(g.label)}
+                aria-pressed={group === g.label}
+                className={`shrink-0 border-r border-rule px-3 py-1.5 text-[13px] whitespace-nowrap last:border-r-0 ${
+                  group === g.label ? "bg-ink text-sheet" : "text-ink-2 hover:bg-paper hover:text-ink"
+                }`}
+              >
+                {g.label === "No grouping" ? "None" : g.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="ml-auto flex flex-wrap gap-2">
           <button
-            className="btn btn-ghost"
+            className="btn btn-sm btn-quiet"
             title="AG Grid integrated chart: amount agents asked to pay, per merchant (blocked attempts included)"
-            onClick={() => grid.current?.api.createRangeChart({ cellRange: { columns: ["merchant", "amount"] }, chartType: "doughnut", aggFunc: "sum", chartThemeName: "ag-default-dark" })}
+            onClick={() => grid.current?.api.createRangeChart({ cellRange: { columns: ["merchant", "amount"] }, chartType: "doughnut", aggFunc: "sum", chartThemeName: "agentguard" })}
           >
-            📊 Requested $ by merchant
+            Chart $ by merchant
           </button>
           <button
-            className="btn btn-ghost"
+            className="btn btn-sm btn-quiet"
             title="AG Grid integrated chart of average risk per decision"
-            onClick={() => grid.current?.api.createRangeChart({ cellRange: { columns: ["decision", "riskScore"] }, chartType: "groupedColumn", aggFunc: "avg", chartThemeName: "ag-default-dark" })}
+            onClick={() => grid.current?.api.createRangeChart({ cellRange: { columns: ["decision", "riskScore"] }, chartType: "groupedColumn", aggFunc: "avg", chartThemeName: "agentguard" })}
           >
-            📊 Risk by decision
+            Chart risk by decision
           </button>
-          <button className="btn btn-ghost" onClick={() => grid.current?.api.exportDataAsCsv({ fileName: "agentguard-audit.csv" })}>
+          <button className="btn btn-sm btn-quiet" onClick={() => grid.current?.api.exportDataAsCsv({ fileName: "agentguard-audit.csv" })}>
             Export CSV
           </button>
-          <button className="btn btn-ghost" onClick={() => grid.current?.api.exportDataAsExcel({ fileName: "agentguard-audit.xlsx" })}>
+          <button className="btn btn-sm btn-quiet" onClick={() => grid.current?.api.exportDataAsExcel({ fileName: "agentguard-audit.xlsx" })}>
             Export Excel
           </button>
         </div>
       </div>
-      <div className="card overflow-hidden" style={{ height: "calc(100vh - 230px)", minHeight: 480 }}>
+      <div style={{ height: "calc(100vh - 330px)", minHeight: 520 }}>
         <AgGridReact<Row>
           ref={grid}
           theme={theme}
@@ -401,7 +422,8 @@ export default function AuditGrid() {
           animateRows
           cellSelection
           enableCharts
-          chartThemes={["ag-default-dark"]}
+          customChartThemes={{ agentguard: chartTheme }}
+          chartThemes={["agentguard"]}
         />
       </div>
     </div>

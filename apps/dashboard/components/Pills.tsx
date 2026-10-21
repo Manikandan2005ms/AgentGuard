@@ -1,31 +1,36 @@
 import type { DecisionType, PayStatusType } from "@agentguard/shared";
 
+// Decisions are stamped like a ledger entry; the payment's state is a quieter dot and label.
+
 const DECISION: Record<DecisionType, { label: string; cls: string }> = {
-  APPROVE: { label: "Approved", cls: "bg-ok/15 text-ok border-ok/30" },
-  ASK_HUMAN: { label: "Ask human", cls: "bg-warn/15 text-warn border-warn/30" },
-  BLOCK: { label: "Blocked", cls: "bg-bad/15 text-bad border-bad/30" },
+  APPROVE: { label: "Approved", cls: "text-ok" },
+  ASK_HUMAN: { label: "Asked you", cls: "text-warn" },
+  BLOCK: { label: "Blocked", cls: "text-bad" },
 };
 
-const STATUS: Record<PayStatusType, { label: string; cls: string }> = {
-  PENDING: { label: "Awaiting PayPal", cls: "bg-warn/10 text-warn border-warn/30" },
-  HELD: { label: "Funds held", cls: "bg-warn/10 text-warn border-warn/30" },
-  PAID: { label: "Captured", cls: "bg-ok/10 text-ok border-ok/30" },
-  VOIDED: { label: "Voided", cls: "bg-white/5 text-muted border-line" },
-  BLOCKED: { label: "No money moved", cls: "bg-bad/10 text-bad border-bad/30" },
-  FAILED: { label: "Failed", cls: "bg-bad/10 text-bad border-bad/30" },
-  REFUNDED: { label: "Refunded", cls: "bg-white/5 text-muted border-line" },
-};
+const OK = "var(--color-ok)";
+const WARN = "var(--color-warn)";
+const BAD = "var(--color-bad)";
+const QUIET = "var(--color-ink-3)";
 
-const base = "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold whitespace-nowrap";
+const STATUS: Record<PayStatusType, { label: string; dot: string }> = {
+  PENDING: { label: "Awaiting PayPal", dot: WARN },
+  HELD: { label: "Funds held", dot: WARN },
+  PAID: { label: "Captured", dot: OK },
+  VOIDED: { label: "Voided", dot: QUIET },
+  BLOCKED: { label: "No money moved", dot: QUIET },
+  FAILED: { label: "Failed", dot: BAD },
+  REFUNDED: { label: "Refunded", dot: QUIET },
+};
 
 export function DecisionPill({ decision }: { decision: DecisionType }) {
   const d = DECISION[decision];
-  return <span className={`${base} ${d.cls}`}>{d.label}</span>;
+  return <span className={`stamp ${d.cls}`}>{d.label}</span>;
 }
 
 /** PayPal Agent Toolkit actions don't hold or capture funds; they wait, run, or don't run. */
 const TOOL_LABELS: Partial<Record<PayStatusType, string>> = {
-  HELD: "Awaiting you",
+  HELD: "Waiting for you",
   PENDING: "Running",
   PAID: "Executed",
   BLOCKED: "Not executed",
@@ -35,15 +40,21 @@ const TOOL_LABELS: Partial<Record<PayStatusType, string>> = {
 export function StatusPill({ status, kind }: { status: PayStatusType; kind?: string }) {
   const s = STATUS[status];
   const label = kind === "paypal_tool" ? (TOOL_LABELS[status] ?? s.label) : s.label;
-  return <span className={`${base} ${s.cls}`}>{label}</span>;
+  return (
+    <span className="mark" style={{ "--dot": s.dot } as React.CSSProperties}>
+      {label}
+    </span>
+  );
 }
 
 export function ToolBadge({ name }: { name: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/40 bg-sky-400/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-sky-300">
+    <span className="inline-flex items-center rounded-[3px] bg-accent-wash px-1.5 font-mono text-[11.5px] leading-[1.6] text-accent">
       PayPal toolkit · {name}
     </span>
   );
 }
 
-export const decisionColor = (d: DecisionType) => (d === "APPROVE" ? "#22c55e" : d === "ASK_HUMAN" ? "#f59e0b" : "#ef4444");
+export function InjectionTag() {
+  return <span className="inline-flex items-center rounded-[3px] bg-bad-wash px-1.5 text-[12px] font-medium leading-[1.6] text-bad">Prompt injection</span>;
+}
