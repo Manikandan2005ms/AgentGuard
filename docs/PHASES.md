@@ -17,7 +17,7 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 | 4 | Webhooks with signature verification | ✅ mock · 🟡 sandbox |
 | 5 | AI layer: compiler, intent, injection, categorizer, explainer | ✅ heuristics · 🟡 Claude |
 | 6 | MCP server (incl. guarded PayPal Agent Toolkit), demo stores, demo agent, **Try it** page | ✅ scripted · 🟡 LLM agent · ✅ **toolkit on real sandbox (verified Oct 21)** |
-| 7 | Telegram approvals + timeout job | ✅ code · 🟡 live bot |
+| 7 | Telegram approvals + timeout job | ✅ code · ✅ **live bot (verified Oct 21)** |
 | 8 | Dashboard: live feed, policies, AG Grid audit, budgets, threats, setup | ✅ |
 | 9 | Deploy to Render | 🧑 (blueprint ready) |
 | 10 | Polish, README, Postman | ✅ drafted · 🧑 final pass |
@@ -28,7 +28,9 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 
 **Verified on the real PayPal sandbox (Oct 21):** Vault (wallet connect), Orders authorize → capture / void, Transaction search, and the PayPal Agent Toolkit: read-only tools, real refunds, held and rejected actions, and the ops-agent scenario (details in Phases 2 and 6).
 
-**Not verified yet (needs your accounts or a public URL):** PayPal webhooks (need the deployed URL), Claude API calls, the Telegram bot, and the Render deploy. The code for all of these is written against the documented APIs; Phases 4, 5, 7 and 9 tell you exactly how to check each one.
+**Verified with the live Telegram bot (Oct 21):** phone linked with `/start`, a $129 hold approved from the phone → PayPal captured it, a second hold rejected from the phone → voided.
+
+**Not verified yet (needs your accounts or a public URL):** PayPal webhooks (need the deployed URL), Claude API calls, and the Render deploy. The code for all of these is written against the documented APIs; Phases 4, 5 and 9 tell you exactly how to check each one.
 
 ---
 
@@ -53,7 +55,7 @@ From paypalaihackathon.devpost.com (overview, rules, resources):
 | 🟡 Y1 | Join the hackathon on Devpost; push the repo to a **public** GitHub repo (✅ pushed Oct 20; confirm you clicked **Join hackathon**) | Required; GitHub shows the MIT license in the About section | Oct 21 |
 | ✅ Y2 | PayPal sandbox app + accounts (Phase 0, done Oct 21; Transaction search confirmed working). In the app's **Features**, enable **Vault / save payment methods** and **Transaction search** | Without Transaction search, reconciliation gets 403s; without Vault, use the fallback flow | Oct 21 |
 | 🟡 Y3 | Run Phases 2 and 4 against the real sandbox and send me any error output (✅ Phase 2 and the Agent Toolkit verified Oct 21; webhooks wait for the public URL from Y5) | **Biggest technical risk:** the real PayPal calls haven't been exercised yet | Oct 22–25 |
-| Y4 | Add `ANTHROPIC_API_KEY`, run Phase 5; add the Telegram token, run Phase 7 | Verifies the AI layer and phone approvals | Oct 27 – Nov 2 |
+| 🟡 Y4 | Add `ANTHROPIC_API_KEY`, run Phase 5; add the Telegram token, run Phase 7 (✅ Telegram done Oct 21: bot @AgentGuardus_bot) | Verifies the AI layer and phone approvals | Oct 27 – Nov 2 |
 | Y5 | Deploy on Render with a database that **won't expire during judging**: a paid Render Postgres plan, or an external free Postgres such as Neon (set `DATABASE_URL`) | Free Render Postgres expires 30 days after creation, which lands inside Dec 1–15 | Nov 5 |
 | Y6 | Ask AG Grid for a license key (sponsor resources / Discord) | Removes the trial watermark from the video and hosted demo | Before Nov 8 |
 | Y7 | Record the video (Phase 11), write the Devpost text, add screenshots and test instructions | Presentation is 1/5 of the score, and judges may rely only on these | Nov 8–10 |
@@ -69,7 +71,7 @@ From paypalaihackathon.devpost.com (overview, rules, resources):
 | ✅ R5 | **Refund button** in the audit grid, and a **policy simulator** (done Oct 20) that replays the last 30 days against a draft policy before activation, shown in an AG Grid | Design, Technological Implementation |
 | ✅ R6 | **Phone-width pass** (done Oct 20): no page wider than 375px; cards restack, the audit grid drops its pinned column and side bar on phones. Plus a shield favicon and a generated 1200×630 social preview | Design, video quality |
 
-R1–R6 are done, and the real-sandbox check (Y3) passed except webhooks, which need the public URL from Y5. Next: Y4 (Claude key, Telegram bot), then Y5 (deploy) and the webhooks, Y6, and Y7. Leave Nov 11–12 as buffer.
+R1–R6 are done, and the real-sandbox check (Y3) passed except webhooks, which need the public URL from Y5. Next: the rest of Y4 (Claude key; the Telegram bot is done), then Y5 (deploy) and the webhooks, Y6, and Y7. Leave Nov 11–12 as buffer.
 
 ---
 
@@ -235,7 +237,7 @@ npm run agent -- --ops                                                          
 
 ---
 
-## Phase 7: Telegram approvals ✅ code · 🟡 live bot (Nov 2)
+## Phase 7: Telegram approvals ✅ code · ✅ live bot (verified Oct 21)
 
 **Built** (`apps/api/src/telegram/bot.ts`): approval cards with ✅ Approve / ❌ Reject buttons, the result edited into the same message, alerts for blocked attacks with the hidden snippet, and the `/start`, `/freeze`, `/unfreeze` and `/status` commands. Only the linked chat can approve. A background job voids holds nobody answered within `approval_timeout_minutes` (default 15).
 
@@ -244,7 +246,9 @@ npm run agent -- --ops                                                          
 2. Open your bot on your phone → send `/start`. Dashboard → **Setup** should show "Phone linked".
 3. `npm run agent -- --scripted "Buy wireless headphones"` → your phone buzzes → tap **Approve** → the agent prints "Human approved" and the Live card turns green.
 
-**Done when:** a phone tap captures, and a reject voids.
+**Done when:** a phone tap captures, and a reject voids. ✅ **Verified Oct 21** with @AgentGuardus_bot on the real PayPal sandbox: Approve → captured, Reject → voided, and the demo agent saw each answer within seconds.
+
+**Lessons:** paste the token only into `.env` (never into a chat). If it leaks, BotFather → `/revoke` gives a new one. Restart `npm run dev` after changing `.env`. One bot can serve only one running AgentGuard: the Render blueprint already uses `TELEGRAM_MODE=webhook`, and while that is live a local copy can't poll the same bot. Use a second bot for local testing after you deploy.
 
 ---
 
