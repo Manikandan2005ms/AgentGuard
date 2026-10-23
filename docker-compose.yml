@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       # Read from .env (see .env.example) so no password lives in the repo.
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: agentguard
     ports:
       - "127.0.0.1:5432:5432" # this machine only, not the local network
