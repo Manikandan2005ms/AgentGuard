@@ -357,6 +357,7 @@ Devpost draft text is in the original plan (§24); update "Built with" to: `payp
 
 - **`EADDRINUSE` on 4000/3000/3001**: an old process is still running. Close it (on Windows: `netstat -ano | findstr :4000`, then end that PID in Task Manager).
 - **Postgres won't start**: delete `.pgdata` and run `npm run db:local` again, then `npm run db:migrate` and `npm run seed`. This wipes local data.
+- **`db:local` asks for `POSTGRES_PASSWORD`**: your `.env` predates it. Add `POSTGRES_PASSWORD=` with the password already in your `DATABASE_URL` (older setups used `postgres`).
 - **Dashboard says it can't reach the API**: check `NEXT_PUBLIC_API_URL`, and that `DASHBOARD_URL` (used for CORS) matches the dashboard's origin.
 - **Webhooks rejected**: `PAYPAL_WEBHOOK_ID` must be the ID of the webhook whose URL you're receiving on.
 - **Every payment asks for approval**: no active policy (confirm one on Policies), no task registered (use `start_task`), or an AI check failing (look for `[ai:…] failed` in the API log; this is the intended fail-safe).
