@@ -26,6 +26,7 @@ export async function compileAndSave(rawText: string) {
     summary: compiled.summary,
     clarifications: compiled.clarifications,
     engine: compiled.engine,
+    provider: compiled.provider ?? null,
     warning: compiled.warning ?? null,
   };
 }

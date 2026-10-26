@@ -22,7 +22,7 @@ export async function buildApp() {
   const origins = (env.CORS_ORIGINS ?? env.DASHBOARD_URL).split(",").map((s) => s.trim());
   await app.register(cors, { origin: origins, credentials: false });
 
-  // Public-demo abuse protection: a global ceiling per IP, tighter limits on routes that call Claude.
+  // Public-demo abuse protection: a global ceiling per IP, tighter limits on routes that call the AI.
   await app.register(rateLimit, {
     global: true,
     max: env.RATE_LIMIT_PER_MINUTE,

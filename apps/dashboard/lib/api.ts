@@ -25,12 +25,17 @@ export function timeAgo(iso: string): string {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
+/** Display name of the AI provider behind the checks. */
+export function aiName(provider: string | null | undefined): string {
+  return provider === "gemini" ? "Gemini" : "Claude";
+}
+
 export interface MeResponse {
   user: { name: string; killSwitch: boolean; paypalConnected: boolean; telegramConnected: boolean; telegramUsername: string | null };
   modes: {
     paypal: "sandbox" | "mock";
     paypalFlow: string;
-    llm: { enabled: boolean; provider: string; model: string; fastModel: string };
+    llm: { enabled: boolean; provider: "anthropic" | "gemini" | "none"; model: string; fastModel: string };
     telegram: string;
     telegramBot: string | null;
     agentKeyRequired: boolean;

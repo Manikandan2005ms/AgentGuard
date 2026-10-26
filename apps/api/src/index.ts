@@ -1,5 +1,5 @@
 import { buildApp } from "./app";
-import { env, llmEnabled, paypalMode } from "./env";
+import { env, llmEnabled, llmModels, llmProvider, paypalMode } from "./env";
 import { startJobs } from "./jobs";
 import { setMockEventHandler } from "./paypal/gateway";
 import { processPayPalEvent } from "./services/webhookService";
@@ -18,7 +18,7 @@ console.log(`
   🛡️  AgentGuard API   ${env.PUBLIC_BASE_URL}
       MCP endpoint     ${env.PUBLIC_BASE_URL}/mcp
       PayPal           ${paypalMode === "sandbox" ? `sandbox (${env.PAYPAL_FLOW} flow)` : "MOCK (set PAYPAL_CLIENT_ID/SECRET for sandbox)"}
-      AI checks        ${llmEnabled ? `Anthropic: ${env.LLM_MODEL} / ${env.LLM_FAST_MODEL}` : "heuristics only (set ANTHROPIC_API_KEY to enable)"}
+      AI checks        ${llmEnabled ? `${llmProvider === "gemini" ? "Gemini" : "Anthropic"}: ${llmModels.main} / ${llmModels.fast}` : "heuristics only (set GEMINI_API_KEY or ANTHROPIC_API_KEY to enable)"}
 `);
 
 startJobs();

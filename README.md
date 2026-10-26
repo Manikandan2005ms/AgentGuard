@@ -3,7 +3,7 @@
 
 **AgentGuard lets you give an AI agent your PayPal wallet without giving it a blank cheque.** You write spending rules in plain English. Every payment your agent attempts is checked against those rules, the task you actually gave the agent, and the web page it was reading, then it is **auto-approved**, **held for one-tap approval on your phone**, or **blocked**, with a clear explanation and a full audit trail.
 
-> PayPal AI Hackathon 2026 · Built with PayPal Orders v2 (authorize → capture / void), Vault, Webhooks, Reporting · Claude · MCP · AG Grid · Render · Postman
+> PayPal AI Hackathon 2026 · Built with PayPal Orders v2 (authorize → capture / void), Vault, Webhooks, Reporting · Gemini or Claude · MCP · AG Grid · Render · Postman
 
 📋 **The full build process, phase by phase (what's done, what you still need to do): [docs/PHASES.md](docs/PHASES.md)**
 
@@ -30,7 +30,7 @@
  Demo stores (FreshCart, GadgetHub,     │   1. kill switch                              Webhooks (verified)
  MegaDealz ← hidden injections)         │   2. deterministic policy engine (no AI)      Reporting (reconciliation)
                                         │   3. AI checks in parallel: intent,
- Dashboard (Next.js + AG Grid) ◀─SSE──  │      injection, category (Claude)    ──▶ 📱 Telegram bot (approve / reject)
+ Dashboard (Next.js + AG Grid) ◀─SSE──  │      injection, category (LLM)       ──▶ 📱 Telegram bot (approve / reject)
                                         │   4. risk engine → decision (AI can only escalate)
                                         └─ PostgreSQL (Prisma): policies, tasks, requests, webhook events
 ```
@@ -68,7 +68,7 @@ Everything runs end-to-end without keys; add keys to switch on the real services
 | Piece | Without keys | With keys |
 |---|---|---|
 | PayPal | **Mock gateway**: same flow and webhook events, simulated IDs | `PAYPAL_CLIENT_ID` + `PAYPAL_CLIENT_SECRET` → real **sandbox** Orders/Vault/Webhooks |
-| AI checks | **Heuristics**: keyword categorizer and intent check, HTML/CSS injection scanner, rule-based policy compiler | `ANTHROPIC_API_KEY` → Claude adds the policy compiler, intent checker, injection classifier, categorizer and explainer |
+| AI checks | **Heuristics**: keyword categorizer and intent check, HTML/CSS injection scanner, rule-based policy compiler | `GEMINI_API_KEY` (free tier) or `ANTHROPIC_API_KEY` → Gemini or Claude adds the policy compiler, intent checker, injection classifier, categorizer and explainer |
 | Approvals | Dashboard buttons | `TELEGRAM_BOT_TOKEN` → phone approvals (polling locally, webhook on Render) |
 | Demo agent | `--scripted` deterministic naive agent | LLM agent on Claude (`--careful` for a hardened prompt) |
 
@@ -148,16 +148,18 @@ npm run typecheck
 
 ## AI tools used
 
-| Where | Model | What it does |
-|---|---|---|
-| Policy compiler | Claude Opus 5.5 (`LLM_MODEL`) | Plain-English rules → JSON policy (validated with a strict Zod schema; ambiguous rules go to `clarifications`). The confirmation summary is generated from the JSON by code, so it always matches what is enforced. |
-| Intent checker | Claude Haiku 5.5 (`LLM_FAST_MODEL`) | Does the purchase match the user's task? Combined with a keyword heuristic; the stricter verdict wins. |
-| Injection classifier | Claude Haiku 5.5 | Second layer after the HTML/CSS heuristics; page content is wrapped in delimiters and labelled untrusted. |
-| Categorizer | Claude Haiku 5.5 | Item → spending category (cached). Can only make a category stricter, never relax a high-risk keyword match. |
-| Explainer | Claude Haiku 5.5 | One-sentence reason for Telegram, the agent and the audit log. The decision itself never comes from the model. |
-| Demo agent | Claude Opus 5.5 | Anthropic SDK tool runner; deliberately naive by default to simulate a vulnerable agent. |
+AgentGuard runs its AI checks on **Google Gemini** (`GEMINI_API_KEY`, free tier) or **Anthropic Claude** (`ANTHROPIC_API_KEY`). With `LLM_PROVIDER=auto` (the default) it uses Claude if that key is set, otherwise Gemini.
 
-All calls use the official Anthropic TypeScript SDK with structured outputs, and the Opus calls opt into server-side refusal fallbacks. *(Add any AI tools you used to build the project here as well.)*
+| Where | Model (Gemini / Claude) | What it does |
+|---|---|---|
+| Policy compiler | Gemini 3.6 Flash (`GEMINI_MODEL`) / Claude Opus 5.5 (`LLM_MODEL`) | Plain-English rules → JSON policy (validated with a strict Zod schema; ambiguous rules go to `clarifications`). The confirmation summary is generated from the JSON by code, so it always matches what is enforced. |
+| Intent checker | Gemini 3.5 Flash-Lite (`GEMINI_FAST_MODEL`) / Claude Haiku 5.5 (`LLM_FAST_MODEL`) | Does the purchase match the user's task? Combined with a keyword heuristic; the stricter verdict wins. |
+| Injection classifier | Gemini 3.5 Flash-Lite / Claude Haiku 5.5 | Second layer after the HTML/CSS heuristics; page content is wrapped in delimiters and labelled untrusted. |
+| Categorizer | Gemini 3.5 Flash-Lite / Claude Haiku 5.5 | Item → spending category (cached). Can only make a category stricter, never relax a high-risk keyword match. |
+| Explainer | Gemini 3.5 Flash-Lite / Claude Haiku 5.5 | One-sentence reason for Telegram, the agent and the audit log. The decision itself never comes from the model. |
+| Demo agent | Claude Opus 5.5 | Anthropic SDK tool runner; deliberately naive by default to simulate a vulnerable agent. Without an Anthropic key, the scripted agent runs instead. |
+
+Every check asks for structured JSON output (a JSON Schema generated from the same Zod schema that validates the reply). Gemini is called through its Interactions API; Claude through the official Anthropic TypeScript SDK, with the Opus calls opting into server-side refusal fallbacks. *(Add any AI tools you used to build the project here as well.)*
 
 ## Honest notes
 
@@ -166,10 +168,10 @@ All calls use the official Anthropic TypeScript SDK with structured outputs, and
 - **Vault availability**: buyer-not-present payments need Vault enabled on the sandbox app. Without it, set `PAYPAL_FLOW=approval_link` (README §8.4 fallback): each payment carries a PayPal approval link, and approving on PayPal is the human approval.
 - **The demo agent is intentionally gullible** (it is told to obey store notices). AgentGuard's protection doesn't depend on the agent; it is enforced at the payment layer. `--careful` runs a hardened prompt.
 - **Budgets are rolling windows** (last 24 h / 7 d / 30 d), and held funds count against them.
-- **Public-demo protection**: per-IP rate limits (tighter on routes that call Claude or start demo runs) and a daily cap on Claude calls (`LLM_DAILY_CALL_LIMIT`). Past the cap, AI checks fail safe, so payments ask the human.
+- **Public-demo protection**: per-IP rate limits (tighter on routes that call the AI or start demo runs) and a daily cap on AI calls (`LLM_DAILY_CALL_LIMIT`). Past the cap, AI checks fail safe, so payments ask the human.
 - **Agent Toolkit calls in mock mode** return simulated results; with sandbox keys they run against PayPal for real (verified on the sandbox: real refunds, held and rejected actions, PayPal errors recorded as failed). Refunding a capture only works for captures your sandbox app owns, so on the sandbox the ops scenario refunds your latest FreshCart oat-milk payment: run *Prompt injection, blocked* first.
 - **AG Grid / AG Charts Enterprise** features (row grouping, master-detail, set filters, Excel export, integrated charts, sparklines) run in trial mode with a watermark until you set `NEXT_PUBLIC_AG_GRID_LICENSE_KEY`.
-- **Policy simulator** replays only the code layer (policy rules, risk score, decision) and reuses each request's stored AI findings, so it is free and deterministic; it doesn't re-ask Claude.
+- **Policy simulator** replays only the code layer (policy rules, risk score, decision) and reuses each request's stored AI findings, so it is free and deterministic; it doesn't re-ask the AI.
 
 ## License
 

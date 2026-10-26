@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { api, type MeResponse } from "@/lib/api";
+import { aiName, api, type MeResponse } from "@/lib/api";
 
 function Step({ n, title, done, children }: { n: number; title: string; done: boolean; children: React.ReactNode }) {
   return (
@@ -179,13 +179,13 @@ export default function SetupPage() {
         <h2 className="section-title">AI checks</h2>
         {me?.modes.llm.enabled ? (
           <p className="mt-2 text-[14.5px] text-ink-2">
-            Claude is on. The policy compiler uses <code>{me.modes.llm.model}</code> and the in-path checks use <code>{me.modes.llm.fastModel}</code>. AI can only
+            {aiName(me.modes.llm.provider)} is on. The policy compiler uses <code>{me.modes.llm.model}</code> and the in-path checks use <code>{me.modes.llm.fastModel}</code>. AI can only
             raise a payment&apos;s risk, never lower it.
           </p>
         ) : (
           <p className="mt-2 text-[14.5px] text-ink-2">
-            Running on heuristics only. Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to add the Claude policy compiler, intent checker, injection
-            classifier and explainer.
+            Running on heuristics only. Set <code>GEMINI_API_KEY</code> (free) or <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to add the AI policy
+            compiler, intent checker, injection classifier and explainer.
           </p>
         )}
       </section>

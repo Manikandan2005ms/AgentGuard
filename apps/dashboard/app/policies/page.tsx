@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { api } from "@/lib/api";
+import { aiName, api } from "@/lib/api";
 
 const PolicySimulator = dynamic(() => import("@/components/PolicySimulator"), { ssr: false });
 
@@ -24,6 +24,7 @@ interface CompileResult {
   summary: string[];
   clarifications: string[];
   engine: "llm" | "rules";
+  provider: "anthropic" | "gemini" | null;
   warning: string | null;
 }
 
@@ -154,7 +155,7 @@ export default function PoliciesPage() {
             <div id="compile-result" className="sheet just-in scroll-mt-36 border-t-[3px] !border-t-accent p-5">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="section-title">Here&apos;s what I understood</h2>
-                <span className="font-serif text-[14px] italic text-ink-3">{result.engine === "llm" ? "read by Claude" : "read by the rule parser"}</span>
+                <span className="font-serif text-[14px] italic text-ink-3">{result.engine === "llm" ? `read by ${aiName(result.provider)}` : "read by the rule parser"}</span>
               </div>
               <ol className="mt-4 divide-y divide-rule border-y border-rule">
                 {result.summary.map((s, i) => (

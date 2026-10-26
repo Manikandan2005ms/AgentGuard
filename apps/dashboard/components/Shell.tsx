@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, type MeResponse } from "@/lib/api";
+import { aiName, api, type MeResponse } from "@/lib/api";
 import { FreezeButton, FrozenBanner, useKillSwitch } from "./KillSwitch";
 
 const NAV = [
@@ -63,7 +63,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               {me && (
                 <ul className="hidden items-center gap-4 lg:flex" aria-label="Environment">
                   <Fact ok={me.modes.paypal === "sandbox"}>{me.modes.paypal === "sandbox" ? "PayPal sandbox" : "Mock PayPal"}</Fact>
-                  <Fact ok={me.modes.llm.enabled}>{me.modes.llm.enabled ? "Claude checks on" : "Heuristics only"}</Fact>
+                  <Fact ok={me.modes.llm.enabled}>{me.modes.llm.enabled ? `${aiName(me.modes.llm.provider)} checks on` : "Heuristics only"}</Fact>
                   <Fact ok={me.user.telegramConnected}>{me.user.telegramConnected ? "Phone linked" : "No phone linked"}</Fact>
                 </ul>
               )}

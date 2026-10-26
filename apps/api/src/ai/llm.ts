@@ -2,10 +2,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { z } from "zod";
-import { env, llmEnabled } from "../env";
+import { env, llmEnabled, llmModels, llmProvider } from "../env";
+import { geminiOnce } from "./gemini";
 
 /**
- * Thin wrapper for every AI check: structured JSON output validated with Zod.
+ * Thin wrapper for every AI check: structured JSON output validated with Zod, from Claude or Gemini.
  * README §9: if validation fails, retry once, then fail safe (the caller treats it as ASK_HUMAN).
  */
 
@@ -33,7 +34,16 @@ export interface StructuredCall<T> {
   maxTokens?: number;
 }
 
-export type StructuredResult<T> = { ok: true; data: T; model: string } | { ok: false; error: string };
+export type StructuredResult<T> =
+  | { ok: true; data: T; model: string; provider: "anthropic" | "gemini" }
+  | { ok: false; error: string };
+
+/** One model call, normalized across providers. "fatal" = retrying can't help (bad key, bad request, quota). */
+export type Attempt =
+  | { stop: "done"; output: unknown; model: string }
+  | { stop: "refusal" }
+  | { stop: "max_tokens" }
+  | { stop: "fatal"; error: string };
 
 // Daily cap on model calls, so a public demo can't run up an unbounded bill (R3).
 // Hitting it counts as a failed AI check, which fails safe to ASK_HUMAN.
@@ -51,9 +61,9 @@ function takeBudget(): boolean {
 
 export const llmInfo = () => ({
   enabled: llmEnabled,
-  provider: llmEnabled ? "anthropic" : "none",
-  model: env.LLM_MODEL,
-  fastModel: env.LLM_FAST_MODEL,
+  provider: llmProvider,
+  model: llmModels.main,
+  fastModel: llmModels.fast,
   callsToday: usage.day === new Date().toISOString().slice(0, 10) ? usage.calls : 0,
   dailyCallLimit: env.LLM_DAILY_CALL_LIMIT,
 });
@@ -86,30 +96,46 @@ async function parseOnce<T>(call: StructuredCall<T>, model: string) {
   });
 }
 
+async function anthropicOnce<T>(call: StructuredCall<T>, model: string): Promise<Attempt> {
+  try {
+    const res = await parseOnce(call, model);
+    if (res.stop_reason === "refusal") return { stop: "refusal" };
+    if (res.stop_reason === "max_tokens") return { stop: "max_tokens" };
+    return { stop: "done", output: res.parsed_output, model: res.model };
+  } catch (err) {
+    if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
+      return { stop: "fatal", error: `Anthropic auth failed: ${err.message}` };
+    }
+    if (err instanceof Anthropic.BadRequestError || err instanceof Anthropic.NotFoundError) {
+      return { stop: "fatal", error: `Anthropic rejected the request: ${err.message}` };
+    }
+    throw err;
+  }
+}
+
 export async function structured<T>(call: StructuredCall<T>): Promise<StructuredResult<T>> {
-  if (!llmEnabled) return { ok: false, error: "LLM disabled" };
-  const model = call.tier === "main" ? env.LLM_MODEL : env.LLM_FAST_MODEL;
+  if (llmProvider === "none") return { ok: false, error: "LLM disabled" };
+  const provider = llmProvider;
+  const model = call.tier === "main" ? llmModels.main : llmModels.fast;
+  // On Gemini the retry goes to the fast model: the free tier's bigger models are sometimes overloaded or slow.
+  const retryModel = provider === "gemini" ? llmModels.fast : model;
   let lastError = "unknown error";
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (const attemptModel of [model, retryModel]) {
     if (!takeBudget()) return { ok: false, error: `daily AI call limit (${env.LLM_DAILY_CALL_LIMIT}) reached` };
     try {
-      const res = await parseOnce(call, model);
-      if (res.stop_reason === "refusal") return { ok: false, error: "model declined the request" };
-      if (res.stop_reason === "max_tokens") {
+      const res =
+        provider === "gemini" ? await geminiOnce(call, attemptModel, env.GEMINI_API_KEY ?? "") : await anthropicOnce(call, attemptModel);
+      if (res.stop === "fatal") return { ok: false, error: res.error };
+      if (res.stop === "refusal") return { ok: false, error: "model declined the request" };
+      if (res.stop === "max_tokens") {
         lastError = "output truncated (max_tokens)";
         continue;
       }
-      const checked = call.schema.safeParse(res.parsed_output);
-      if (checked.success) return { ok: true, data: checked.data, model: res.model };
+      const checked = call.schema.safeParse(res.output);
+      if (checked.success) return { ok: true, data: checked.data, model: res.model, provider };
       lastError = `output failed validation: ${checked.error.issues[0]?.message ?? "invalid"}`;
     } catch (err) {
-      if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
-        return { ok: false, error: `Anthropic auth failed: ${err.message}` };
-      }
-      if (err instanceof Anthropic.BadRequestError || err instanceof Anthropic.NotFoundError) {
-        return { ok: false, error: `Anthropic rejected the request: ${err.message}` };
-      }
       lastError = err instanceof Error ? err.message : String(err);
     }
   }

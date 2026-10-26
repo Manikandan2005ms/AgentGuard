@@ -57,6 +57,8 @@ export interface CompiledPolicy {
   summary: string[];
   clarifications: string[];
   engine: "llm" | "rules";
+  /** Which AI read the rules, when engine is "llm". */
+  provider?: "anthropic" | "gemini";
   warning?: string;
 }
 
@@ -73,7 +75,7 @@ export async function compilePolicy(rawText: string): Promise<CompiledPolicy> {
   if (res.ok) {
     const valid = PolicySchema.safeParse(res.data);
     if (valid.success) {
-      return { policy: valid.data, summary: describePolicy(valid.data), clarifications: valid.data.clarifications, engine: "llm" };
+      return { policy: valid.data, summary: describePolicy(valid.data), clarifications: valid.data.clarifications, engine: "llm", provider: res.provider };
     }
     const fallback = compilePolicyWithRules(rawText);
     return {

@@ -30,11 +30,16 @@ const EnvSchema = z.object({
   PAYPAL_MERCHANT_GADGETHUB: opt,
   PAYPAL_MERCHANT_MEGADEALZ: opt,
 
-  LLM_PROVIDER: z.enum(["anthropic", "none"]).default("anthropic"),
+  // auto = Anthropic if its key is set, else Gemini if its key is set, else heuristics only
+  LLM_PROVIDER: z.enum(["auto", "anthropic", "gemini", "none"]).default("auto"),
   ANTHROPIC_API_KEY: opt,
   ANTHROPIC_AUTH_TOKEN: opt,
   LLM_MODEL: z.string().default("claude-opus-5-5"),
   LLM_FAST_MODEL: z.string().default("claude-haiku-5-5"),
+  // Google Gemini (free tier available): key from aistudio.google.com
+  GEMINI_API_KEY: opt,
+  GEMINI_MODEL: z.string().default("gemini-3.6-flash"),
+  GEMINI_FAST_MODEL: z.string().default("gemini-3.5-flash-lite"),
 
   TELEGRAM_BOT_TOKEN: opt,
   TELEGRAM_MODE: z.enum(["polling", "webhook"]).default("polling"),
@@ -61,7 +66,19 @@ if (!parsed.success) {
 export const env = parsed.data;
 
 export const paypalMode: "sandbox" | "mock" = env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET ? "sandbox" : "mock";
-export const llmEnabled = env.LLM_PROVIDER === "anthropic" && !!(env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN);
+const hasAnthropicKey = !!(env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN);
+const hasGeminiKey = !!env.GEMINI_API_KEY;
+function pickProvider(): "anthropic" | "gemini" | "none" {
+  if (env.LLM_PROVIDER === "auto") return hasAnthropicKey ? "anthropic" : hasGeminiKey ? "gemini" : "none";
+  if (env.LLM_PROVIDER === "anthropic") return hasAnthropicKey ? "anthropic" : "none";
+  if (env.LLM_PROVIDER === "gemini") return hasGeminiKey ? "gemini" : "none";
+  return "none";
+}
+export const llmProvider = pickProvider();
+export const llmEnabled = llmProvider !== "none";
+/** Model ids for the active provider: "main" = policy compiler, "fast" = in-request-path checks. */
+export const llmModels =
+  llmProvider === "gemini" ? { main: env.GEMINI_MODEL, fast: env.GEMINI_FAST_MODEL } : { main: env.LLM_MODEL, fast: env.LLM_FAST_MODEL };
 export const telegramEnabled = !!env.TELEGRAM_BOT_TOKEN;
 
 export const DEMO_USER_ID = "demo-user";

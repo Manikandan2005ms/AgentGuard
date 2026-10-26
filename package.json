@@ -21,6 +21,7 @@
     "dev:stores": "npm run dev -w @agentguard/stores",
     "agent": "npm run start -w @agentguard/demo-agent --",
     "mcp:stdio": "npm run mcp:stdio -w @agentguard/api",
+    "ai:check": "tsx apps/api/src/aiCheck.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspaces --if-present"

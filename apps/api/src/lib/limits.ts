@@ -1,7 +1,7 @@
 import type { FastifyRequest } from "fastify";
 
 /**
- * Per-route rate limits for the public demo (R3). Anything that can trigger Claude calls or
+ * Per-route rate limits for the public demo (R3). Anything that can trigger AI calls or
  * server work gets a tighter budget than plain reads.
  */
 export const LIMITS = {
