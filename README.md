@@ -3,7 +3,7 @@
 
 **AgentGuard lets you give an AI agent your PayPal wallet without giving it a blank cheque.** You write spending rules in plain English. Every payment your agent attempts is checked against those rules, the task you actually gave the agent, and the web page it was reading, then it is **auto-approved**, **held for one-tap approval on your phone**, or **blocked**, with a clear explanation and a full audit trail.
 
-> PayPal AI Hackathon 2026 · Built with PayPal Orders v2 (authorize → capture / void), Vault, Webhooks, Reporting · Gemini or Claude · MCP · AG Grid · Render · Postman
+> PayPal AI Hackathon 2026 · Built with PayPal Orders v2 (authorize → capture / void), Vault, Webhooks, Reporting · Gemini or Claude · MCP · AG Grid · Render · Supabase · Postman
 
 📋 **The full build process, phase by phase (what's done, what you still need to do): [docs/PHASES.md](docs/PHASES.md)**
 
@@ -123,7 +123,8 @@ apps/demo-agent/   Shopping agent (Anthropic SDK tool runner over AgentGuard's M
 packages/shared/   Zod policy schema, shared types, deterministic policy summary
 tests/             Vitest: policy engine, risk + decision matrix, compiler, injection fixture library
 postman/           Postman collection (approve / hold / block flows, MCP calls, policies)
-render.yaml        Render Blueprint: Postgres + api + dashboard + stores
+render.yaml        Render Blueprint: api + dashboard + stores (the database is a free Supabase project)
+.github/workflows/ keep-alive.yml: pings the hosted API every 6 hours so the free Supabase project isn't paused
 docs/PHASES.md     The phase-by-phase build and launch guide
 ```
 
@@ -136,9 +137,9 @@ npm run typecheck
 
 `tests/injection.fixtures/` holds attack pages (CSS-hidden text, comments, alt text, aria-hidden, off-screen, JSON-LD, Unicode tag smuggling, zero-width splitting) that must be detected and clean pages that must pass.
 
-## Deploy (Render)
+## Deploy (Render + Supabase)
 
-`render.yaml` is a Blueprint: in Render, **New → Blueprint** → this repo. It creates the database and three services; fill in the `sync: false` env vars (URLs and keys), then redeploy. Point the PayPal webhook at `https://<api>/webhooks/paypal`. Full steps: [docs/PHASES.md → Phase 9](docs/PHASES.md#phase-9--deploy-to-render).
+The database is a free **Supabase** project: set the API's `DATABASE_URL` to its **Session pooler** connection string. The apps run on **Render**: `render.yaml` is a Blueprint (**New → Blueprint** → this repo) that creates the three services. Fill in the `sync: false` env vars (URLs and keys), then redeploy; the API build creates the tables and the demo data. Point the PayPal webhook at `https://<api>/webhooks/paypal`, and set the `AGENTGUARD_API_URL` repository variable so the keep-alive workflow can reach the API. Full steps: [docs/PHASES.md](docs/PHASES.md), Phase 9.
 
 ## Judge test drive
 

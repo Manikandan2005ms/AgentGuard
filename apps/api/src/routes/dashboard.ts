@@ -4,7 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { llmInfo } from "../ai/llm";
 import { prisma } from "../db";
-import { env, paypalMode, telegramEnabled } from "../env";
+import { DEMO_USER_ID, env, paypalMode, telegramEnabled } from "../env";
 import { publish, subscribe } from "../events";
 import { reconcileJob } from "../jobs";
 import { LIMITS } from "../lib/limits";
@@ -16,6 +16,13 @@ import { telegramBotUsername } from "../telegram/bot";
 
 export async function dashboardRoutes(app: FastifyInstance) {
   app.get("/health", async () => ({ ok: true, paypal: paypalMode, llm: llmInfo().provider }));
+
+  // Pinged by .github/workflows/keep-alive.yml. A real write, so Supabase counts the free
+  // project as active and doesn't pause it between submission and the end of judging.
+  app.get("/api/keepalive", { config: { rateLimit: LIMITS.admin } }, async () => {
+    await prisma.$executeRaw`UPDATE "User" SET "killSwitch" = "killSwitch" WHERE "id" = ${DEMO_USER_ID}`;
+    return { ok: true, at: new Date().toISOString() };
+  });
 
   app.get("/api/me", async () => {
     const user = await getUser();

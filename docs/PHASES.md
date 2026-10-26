@@ -19,7 +19,7 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 | 6 | MCP server (incl. guarded PayPal Agent Toolkit), demo stores, demo agent, **Try it** page | ✅ scripted · 🟡 LLM agent · ✅ **toolkit on real sandbox (verified Oct 21)** |
 | 7 | Telegram approvals + timeout job | ✅ code · ✅ **live bot (verified Oct 21)** |
 | 8 | Dashboard: live feed, policies, AG Grid audit, budgets, threats, setup | ✅ |
-| 9 | Deploy to Render | 🧑 (blueprint ready) |
+| 9 | Deploy: Render (API, dashboard, stores) + free Supabase database | 🧑 (blueprint and keep-alive ping ready) |
 | 10 | Polish, README, Postman | ✅ drafted · 🧑 final pass |
 | 11 | Demo video | 🧑 |
 | 12 | Devpost submission | 🧑 |
@@ -30,7 +30,7 @@ Legend: ✅ built and verified locally · 🟡 built, needs your keys/accounts t
 
 **Verified with the live Telegram bot (Oct 21):** phone linked with `/start`, a $129 hold approved from the phone → PayPal captured it, a second hold rejected from the phone → voided.
 
-**Not verified yet (needs your accounts or a public URL):** PayPal webhooks (need the deployed URL), live AI calls (Gemini or Claude), and the Render deploy. The code for all of these is written against the documented APIs; Phases 4, 5 and 9 tell you exactly how to check each one.
+**Not verified yet (needs your accounts or a public URL):** PayPal webhooks (need the deployed URL), live AI calls (Gemini or Claude), and the Render + Supabase deploy. The code for all of these is written against the documented APIs; Phases 4, 5 and 9 tell you exactly how to check each one.
 
 ---
 
@@ -56,7 +56,7 @@ From paypalaihackathon.devpost.com (overview, rules, resources):
 | ✅ Y2 | PayPal sandbox app + accounts (Phase 0, done Oct 21; Transaction search confirmed working). In the app's **Features**, enable **Vault / save payment methods** and **Transaction search** | Without Transaction search, reconciliation gets 403s; without Vault, use the fallback flow | Oct 21 |
 | 🟡 Y3 | Run Phases 2 and 4 against the real sandbox and send me any error output (✅ Phase 2 and the Agent Toolkit verified Oct 21; webhooks wait for the public URL from Y5) | **Biggest technical risk:** the real PayPal calls haven't been exercised yet | Oct 22–25 |
 | 🟡 Y4 | Add the free `GEMINI_API_KEY` (or a paid `ANTHROPIC_API_KEY`), run Phase 5; add the Telegram token, run Phase 7 (✅ Telegram done Oct 21: bot @AgentGuardus_bot) | Verifies the AI layer and phone approvals | Oct 27 – Nov 2 |
-| Y5 | Deploy on Render with a database that **won't expire during judging**: a paid Render Postgres plan, or an external free Postgres such as Neon (set `DATABASE_URL`) | Free Render Postgres expires 30 days after creation, which lands inside Dec 1–15 | Nov 5 |
+| Y5 | Deploy the three apps on Render with your **free Supabase database**, and switch on the keep-alive ping (Phase 9) | Free Render Postgres expires 30 days after creation, which lands inside Dec 1–15. Supabase doesn't expire; the ping stops it pausing | Nov 5 |
 | Y6 | Ask AG Grid for a license key (sponsor resources / Discord) | Removes the trial watermark from the video and hosted demo | Before Nov 8 |
 | Y7 | Record the video (Phase 11), write the Devpost text, add screenshots and test instructions | Presentation is 1/5 of the score, and judges may rely only on these | Nov 8–10 |
 
@@ -275,19 +275,41 @@ npm run agent -- --ops                                                          
 
 ---
 
-## Phase 9: Deploy to Render 🧑 (Nov 5)
+## Phase 9: Deploy (Render + Supabase) 🧑 (Nov 5)
 
-1. Push the repo to GitHub (Phase 0).
-2. Render → **New** → **Blueprint** → select the repo. `render.yaml` creates `agentguard-db` (Postgres) and three web services: `agentguard-api`, `agentguard-dashboard`, `agentguard-stores`.
-   - ⚠️ **Free Render Postgres expires 30 days after creation**, which would land inside the Dec 1–15 judging window. Before relying on it, change `plan: free` under `databases` to a paid plan, or delete the `databases` block and set `DATABASE_URL` on the API to an external Postgres that doesn't expire (e.g. Neon's free tier).
-   - Free web services also sleep after 15 minutes idle and take about a minute to wake. Open each URL a minute before recording, or use a paid instance for the API during judging.
-3. When the services exist, set the `sync: false` env vars:
-   - **agentguard-api**: `PUBLIC_BASE_URL` (its own URL), `DASHBOARD_URL`, `STORES_URL`, PayPal keys and merchant emails, `GEMINI_API_KEY` (or `ANTHROPIC_API_KEY`), `TELEGRAM_BOT_TOKEN`, optional `AGENT_API_KEY`. `TELEGRAM_MODE=webhook` is preset.
+The three apps run on Render (a hackathon sponsor tool). The database is a free Supabase project, because free Render Postgres is deleted 30 days after creation, which would land inside the Dec 1–15 judging window.
+
+**A. Database (Supabase)**
+
+1. supabase.com → **New project**. Name it `agentguard`. Pick a database password with **only letters and numbers** (symbols like `@` or `#` break the connection string) and save it in your password manager. Region: a **US West** one (Render's default region is Oregon).
+   - If the form asks which connections you plan to use, pick **Only Connection String**. AgentGuard doesn't use Supabase's Data API, and this keeps the tables unreachable through it.
+2. When the project is ready: **Connect** (top of the project page) → **Connection String** → method **Session pooler** → copy it. Replace `[YOUR-PASSWORD]` with your password. This is your `DATABASE_URL`.
+   - Use the **Session pooler**, not "Direct connection": the direct address only works over IPv6, which Render can't reach.
+3. That's all in Supabase. The API's first deploy creates the tables and the demo data.
+
+**B. Apps (Render)**
+
+4. Push the repo to GitHub (Phase 0).
+5. Render → **New** → **Blueprint** → select the repo. `render.yaml` creates three web services: `agentguard-api`, `agentguard-dashboard`, `agentguard-stores`. When it asks for values, paste the Supabase `DATABASE_URL` into **agentguard-api**; leave the URLs for step 6.
+   - Free web services sleep after 15 minutes idle and take about a minute to wake. Open each URL a minute before recording, or use a paid instance for the API during judging.
+6. When the services exist, set the `sync: false` env vars:
+   - **agentguard-api**: `DATABASE_URL` (step 2), `PUBLIC_BASE_URL` (its own URL), `DASHBOARD_URL`, `STORES_URL`, PayPal keys and merchant emails, `GEMINI_API_KEY` (or `ANTHROPIC_API_KEY`), `TELEGRAM_BOT_TOKEN`, optional `AGENT_API_KEY`. `TELEGRAM_MODE=webhook` is preset.
    - **agentguard-dashboard**: `NEXT_PUBLIC_API_URL` = the API URL (baked in at build), optional AG Grid key.
-4. **Manual Deploy → Deploy latest commit** on the API, then the dashboard. The API build runs migrations and the seed (the seed never overwrites a policy you've confirmed).
-5. PayPal app → Webhooks → point at `https://<api>/webhooks/paypal` (Phase 4) → set `PAYPAL_WEBHOOK_ID` → redeploy the API.
-6. Send `/start` to the bot again (webhook mode), then connect PayPal from the hosted **Setup** page.
-7. Run the agent locally against the hosted services:
+7. **Manual Deploy → Deploy latest commit** on the API, then the dashboard. The API build creates the tables in Supabase and adds the demo data (the seed never overwrites a policy you've confirmed). Check: Supabase → **Table Editor** now lists `PaymentRequest`, `Policy` and the other tables.
+8. PayPal app → Webhooks → point at `https://<api>/webhooks/paypal` (Phase 4) → set `PAYPAL_WEBHOOK_ID` → redeploy the API.
+9. Send `/start` to the bot again (webhook mode), then connect PayPal from the hosted **Setup** page.
+
+**C. Keep it awake until judging ends (Dec 15)**
+
+Supabase pauses a free project after about a week without database activity, and nobody will use the demo between Nov 12 and Dec 1. A GitHub Action (`.github/workflows/keep-alive.yml`) calls the API every 6 hours. Each call writes to the database, which keeps the project active, and it also wakes the sleeping Render API.
+
+10. GitHub → your repo → **Settings** → **Secrets and variables** → **Actions** → **Variables** tab → **New repository variable**. Name: `AGENTGUARD_API_URL`. Value: your API URL (e.g. `https://agentguard-api.onrender.com`).
+11. **Actions** tab → **Keep demo awake** → **Run workflow**. A green check means it works; from then on it runs every 6 hours by itself.
+    - GitHub stops scheduled workflows in a public repo after 60 days without a commit. A last commit around Nov 10 keeps it running into January, past Dec 15.
+
+**D. Try it from your computer**
+
+12. Run the agent locally against the hosted services:
 
 ```bash
 AGENTGUARD_MCP_URL=https://<api>/mcp STORES_URL=https://<stores> npm run agent -- --scripted "Buy oat milk and the cheapest bread you can find"
@@ -295,7 +317,7 @@ AGENTGUARD_MCP_URL=https://<api>/mcp STORES_URL=https://<stores> npm run agent -
 
 (On Windows PowerShell, set `$env:AGENTGUARD_MCP_URL` and `$env:STORES_URL` first, or put them in `.env`.)
 
-**Done when:** the hosted dashboard shows the run live, with real sandbox capture IDs. Free Render services sleep when idle, so open each URL a minute before recording or judging.
+**Done when:** the hosted dashboard shows the run live, with real sandbox capture IDs, the new payments appear in Supabase's Table Editor, and **Keep demo awake** shows a green run. Free Render services sleep when idle, so open each URL a minute before recording or judging.
 
 ---
 
@@ -333,7 +355,7 @@ Upload to YouTube as **public** (or unlisted, if the rules allow it).
 
 ## Phase 12: Submit 🧑 (Nov 9–10, buffer Nov 11–12)
 
-Devpost draft text is in the original plan (§24); update "Built with" to: `paypal-orders-api` `paypal-vault` `paypal-webhooks` `paypal-reporting` `mcp` `typescript` `node.js` `fastify` `next.js` `ag-grid` `postgresql` `prisma` `zod` `anthropic-sdk` `claude` `telegram-bot-api` `render` `postman`.
+Devpost draft text is in the original plan (§24); update "Built with" to: `paypal-orders-api` `paypal-vault` `paypal-webhooks` `paypal-reporting` `mcp` `typescript` `node.js` `fastify` `next.js` `ag-grid` `postgresql` `prisma` `zod` `anthropic-sdk` `claude` `telegram-bot-api` `render` `supabase` `github-actions` `postman`.
 
 - [ ] PayPal sandbox used meaningfully (Orders AUTHORIZE, capture, void, Vault, webhooks, reporting)
 - [ ] AI is core (compiler, intent, injection, explanations), described in the README's *AI tools used* table
@@ -344,7 +366,7 @@ Devpost draft text is in the original plan (§24); update "Built with" to: `payp
 - [ ] Sponsor tools listed: AG Grid, Render, Postman
 - [ ] Every link clicked once more
 - [ ] Submitted by **Nov 10**. Nov 11–12 are buffer only: fix, don't add features.
-- [ ] Hosted demo, database and API keys stay live through **Dec 15** (end of judging)
+- [ ] Hosted demo, database and API keys stay live through **Dec 15** (end of judging); check that **Keep demo awake** is still green on Dec 1
 
 ---
 
@@ -366,4 +388,7 @@ Devpost draft text is in the original plan (§24); update "Built with" to: `payp
 - **`db:local` asks for `POSTGRES_PASSWORD`**: your `.env` predates it. Add `POSTGRES_PASSWORD=` with the password already in your `DATABASE_URL` (older setups used `postgres`).
 - **Dashboard says it can't reach the API**: check `NEXT_PUBLIC_API_URL`, and that `DASHBOARD_URL` (used for CORS) matches the dashboard's origin.
 - **Webhooks rejected**: `PAYPAL_WEBHOOK_ID` must be the ID of the webhook whose URL you're receiving on.
+- **Render build fails with `P1001` (can't reach database) or "authentication failed"**: `DATABASE_URL` must be Supabase's **Session pooler** string (host ends in `pooler.supabase.com`), with `[YOUR-PASSWORD]` replaced by your real database password.
+- **"Max client connections reached" from Supabase**: AgentGuard already limits itself to 5 connections on Supabase. If it still happens during a deploy, add `?connection_limit=3` to the end of `DATABASE_URL`.
+- **Supabase says the project is paused**: open it in the Supabase dashboard and click **Restore**, then check the **Keep demo awake** workflow (Phase 9, step 10) has the right `AGENTGUARD_API_URL`.
 - **Every payment asks for approval**: no active policy (confirm one on Policies), no task registered (use `start_task`), or an AI check failing (look for `[ai:…] failed` in the API log; this is the intended fail-safe).

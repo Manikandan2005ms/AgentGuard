@@ -1,0 +1,27 @@
+# Keeps the hosted demo usable through judging (Dec 1–15):
+# - Supabase pauses a free project after about a week without database activity;
+#   /api/keepalive makes a real write, so the project stays active.
+# - The ping also wakes the sleeping Render API, whose background jobs then run for a while.
+# Setup: GitHub repo → Settings → Secrets and variables → Actions → Variables →
+#        New repository variable AGENTGUARD_API_URL = https://<your-api>.onrender.com
+name: Keep demo awake
+
+on:
+  schedule:
+    - cron: "17 */6 * * *" # every 6 hours
+  workflow_dispatch: # "Run workflow" button for a manual check
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the AgentGuard API
+        env:
+          API_URL: ${{ vars.AGENTGUARD_API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "::notice::AGENTGUARD_API_URL is not set yet; skipping (see the comment at the top of this file)."
+            exit 0
+          fi
+          # A sleeping Render service takes about a minute to wake up, so allow retries.
+          curl -fsS --retry 5 --retry-delay 30 --retry-all-errors --max-time 120 "${API_URL%/}/api/keepalive"

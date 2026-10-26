@@ -1,14 +1,7 @@
-# Render Blueprint: New → Blueprint → pick this repo. Creates Postgres + 3 web services.
-# After the first deploy, fill in the "sync: false" values in each service's Environment tab
+# Render Blueprint: New → Blueprint → pick this repo. Creates 3 web services.
+# The database is a free Supabase project (free Render Postgres expires after 30 days, inside the
+# Dec 1–15 judging window). Fill in the "sync: false" values in each service's Environment tab
 # (Render shows the public URLs once services exist), then redeploy.
-databases:
-  - name: agentguard-db
-    # Free Render Postgres expires 30 days after creation (inside the Dec 1–15 judging window).
-    # Switch to a paid plan before submitting, or remove this block and point DATABASE_URL elsewhere.
-    plan: free
-    databaseName: agentguard
-    user: agentguard
-
 services:
   - type: web
     name: agentguard-api
@@ -20,10 +13,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: agentguard-db
-          property: connectionString
+      - key: DATABASE_URL # Supabase → Connect → "Session pooler" string, with your database password filled in
+        sync: false
       - key: PUBLIC_BASE_URL # e.g. https://agentguard-api.onrender.com
         sync: false
       - key: DASHBOARD_URL # e.g. https://agentguard-dashboard.onrender.com
