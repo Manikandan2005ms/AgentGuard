@@ -13,6 +13,7 @@ const NAV = [
   { href: "/audit", label: "Audit log" },
   { href: "/budgets", label: "Budgets" },
   { href: "/threats", label: "Threats" },
+  { href: "/insights", label: "Insights" },
   { href: "/setup", label: "Setup" },
 ];
 

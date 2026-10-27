@@ -12,6 +12,8 @@ export const LIMITS = {
   mcp: { max: 120, timeWindow: "1 minute" },
   /** Human actions and switches. */
   admin: { max: 30, timeWindow: "1 minute" },
+  /** One AG Studio agent turn on Gemini; a single request can take several turns. */
+  studioAi: { max: 40, timeWindow: "1 minute" },
   demoRun: { max: 8, timeWindow: "10 minutes" },
   demoReset: { max: 4, timeWindow: "1 minute" },
 } as const;

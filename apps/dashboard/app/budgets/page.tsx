@@ -100,10 +100,10 @@ export default function BudgetsPage() {
         { type: "bar", direction: "horizontal", xKey: "label", yKey: "held", yName: "Held for approval", stacked: true, fill: CHART_COLORS.warn },
         { type: "bar", direction: "horizontal", xKey: "label", yKey: "remaining", yName: "Remaining", stacked: true, fill: CHART_COLORS.empty },
       ],
-      axes: [
-        { type: "category", position: "left" },
-        { type: "number", position: "bottom", label: { formatter: ({ value }: { value: number }) => usd(value) } },
-      ],
+      axes: {
+        x: { type: "category", position: "left" },
+        y: { type: "number", position: "bottom", label: { formatter: ({ value }: { value: number }) => usd(value) } },
+      },
       legend: { position: "bottom" },
     };
   }, [budgets]);
@@ -120,16 +120,18 @@ export default function BudgetsPage() {
           xKey: "day",
           yKey: "blocked",
           yName: "Blocked attempts",
+          yKeyAxis: "blocked",
           stroke: CHART_COLORS.bad,
           strokeWidth: 2,
           marker: { fill: CHART_COLORS.bad, stroke: PALETTE.sheet, strokeWidth: 2, size: 9 },
         },
       ],
-      axes: [
-        { type: "category", position: "bottom" },
-        { type: "number", position: "left", keys: ["paid"], label: { formatter: ({ value }: { value: number }) => usd(value) } },
-        { type: "number", position: "right", keys: ["blocked"], min: 0 },
-      ],
+      // A second, named axis on the right for the blocked count (the line series links to it with yKeyAxis).
+      axes: {
+        x: { type: "category", position: "bottom" },
+        y: { type: "number", position: "left", label: { formatter: ({ value }: { value: number }) => usd(value) } },
+        blocked: { type: "number", position: "right", min: 0 },
+      },
       legend: { position: "bottom" },
     };
   }, [summary]);

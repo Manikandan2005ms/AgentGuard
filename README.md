@@ -95,8 +95,11 @@ The dashboard header always shows which mode each piece is in.
 | **Refunds** | A refund endpoint for captured agent payments. |
 | **PayPal Agent Toolkit** (`@paypal/agent-toolkit`) | All 47 toolkit tools are offered on AgentGuard's MCP server under their own names. Read-only tools pass straight through. Refunds, dispute acceptance, cancellations, invoices and orders go through the firewall: policy limits, injection scan of the message that triggered them, intent check, Telegram approval and the audit log. This protects merchant "ops agents", not just shopping agents. |
 
-## AG Grid and AG Charts
+## AG Grid, AG Charts and AG Studio
 
+- **Insights** (AG Studio 3.0): a dashboard over every decision, with three pages (Overview, Threats, Sentinel alerts), filter widgets, KPI sparklines, a decisions-per-day combo chart and grids, themed to the dashboard's paper look. **Build** mode adds Studio's drag-and-drop layout tools and its AI chat. The layout is remembered per browser; **Reset layout** restores it.
+  - **Custom widgets**: a **risk gauge** banded at AgentGuard's thresholds (35 asks you, 70 blocks), a **blocked-attacks feed** showing the hidden text pulled off each store page (click one to cross-filter the page to that store), and an **anomaly alert** card.
+  - **Studio Agent Framework on Gemini's free tier**: Studio's five built-in agents (lead, planning, data, page, widget) plus AgentGuard's own **Sentinel**, an anomaly-alert agent the lead hands suspicious-activity requests to. The Sentinel scans the transaction stream with plain-code rules (refund spikes, failed payments, bursts of blocked attacks, policy-block spikes, rising risk, budgets running out; `apps/api/src/core/anomalies.ts`) and builds an alert widget with a daily trend for each finding, in its own words. Every agent turn goes through a Studio LLM adapter to AgentGuard's API (`POST /api/insights/ai/turn`), which holds the Gemini key and translates the turn to Gemini's `generateContent`; Studio runs the tools in the browser. **Scan now** runs the same rules without the model.
 - **Audit log** (AG Grid Enterprise): row grouping (buttons or drag-to-group), master-detail rows with every rule, signal and piece of evidence, set and floating filters, quick search, status-bar aggregations, CSV/Excel export, live row updates, a **risk-signal sparkline** per row, **integrated charts** (one-click "Requested $ by merchant" and "Risk by decision", or select any cells → right-click → Chart Range), and row actions (approve, reject, refund).
 - **Policy simulator** (AG Grid): actual vs. new-policy decision for every replayed purchase, with changed rows highlighted.
 - **Budgets** (AG Charts): spent / held / remaining per budget, 7-day captured spend vs. blocked attempts (dual axis), decision mix and spend-by-category donuts.
@@ -117,7 +120,7 @@ For MCP clients that launch stdio servers: `npm run mcp:stdio`. Set `AGENT_API_K
 
 ```
 apps/api/          Fastify API + MCP server (incl. guarded PayPal Agent Toolkit), decision core, AI layer, PayPal, Telegram, demo runner, jobs, Prisma
-apps/dashboard/    Next.js + Tailwind + AG Grid Enterprise + AG Charts: live feed, Try it, policies (+ simulator), audit, budgets, threats, setup
+apps/dashboard/    Next.js + Tailwind + AG Grid Enterprise + AG Charts + AG Studio: live feed, Try it, policies (+ simulator), audit, budgets, threats, insights, setup
 apps/stores/       FreshCart (with a support inbox), GadgetHub and the malicious MegaDealz (hidden injections), plus an unguarded checkout
 apps/demo-agent/   Shopping agent (Anthropic SDK tool runner over AgentGuard's MCP tools), scripted, ops and unguarded modes
 packages/shared/   Zod policy schema, shared types, deterministic policy summary
@@ -159,6 +162,7 @@ AgentGuard runs its AI checks on **Google Gemini** (`GEMINI_API_KEY`, free tier)
 | Categorizer | Gemini 3.5 Flash-Lite / Claude Haiku 5.5 | Item → spending category (cached). Can only make a category stricter, never relax a high-risk keyword match. |
 | Explainer | Gemini 3.5 Flash-Lite / Claude Haiku 5.5 | One-sentence reason for Telegram, the agent and the audit log. The decision itself never comes from the model. |
 | Demo agent | Claude Opus 5.5 | Anthropic SDK tool runner; deliberately naive by default to simulate a vulnerable agent. Without an Anthropic key, the scripted agent runs instead. |
+| Insights agents (AG Studio) | Gemini 3.6 Flash, falling back to 3.5 Flash-Lite (Gemini only; on whenever `GEMINI_API_KEY` is set) | Studio's built-in agents and the Sentinel build widgets and alerts from plain English. The Sentinel only presents anomalies that AgentGuard's rules found; it can't invent one. Shares the `LLM_DAILY_CALL_LIMIT` cap. |
 
 Every check asks for structured JSON output (a JSON Schema generated from the same Zod schema that validates the reply). Gemini is called through its Interactions API; Claude through the official Anthropic TypeScript SDK, with the Opus calls opting into server-side refusal fallbacks. *(Add any AI tools you used to build the project here as well.)*
 
@@ -172,6 +176,7 @@ Every check asks for structured JSON output (a JSON Schema generated from the sa
 - **Public-demo protection**: per-IP rate limits (tighter on routes that call the AI or start demo runs) and a daily cap on AI calls (`LLM_DAILY_CALL_LIMIT`). Past the cap, AI checks fail safe, so payments ask the human.
 - **Agent Toolkit calls in mock mode** return simulated results; with sandbox keys they run against PayPal for real (verified on the sandbox: real refunds, held and rejected actions, PayPal errors recorded as failed). Refunding a capture only works for captures your sandbox app owns, so on the sandbox the ops scenario refunds your latest FreshCart oat-milk payment: run *Prompt injection, blocked* first.
 - **AG Grid / AG Charts Enterprise** features (row grouping, master-detail, set filters, Excel export, integrated charts, sparklines) run in trial mode with a watermark until you set `NEXT_PUBLIC_AG_GRID_LICENSE_KEY`.
+- **AG Studio** (the Insights page) has its **own licence**, separate from AG Grid's ("AG Studio Pro with AI"). Everything works without it, in trial mode with a watermark and a console notice; set `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` to remove them. AG Studio 3.0 requires AG Grid 36.2 and AG Charts 14.2, so those are pinned to match.
 - **Policy simulator** replays only the code layer (policy rules, risk score, decision) and reuses each request's stored AI findings, so it is free and deterministic; it doesn't re-ask the AI.
 
 ## License

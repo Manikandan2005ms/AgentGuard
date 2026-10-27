@@ -1,9 +1,12 @@
 "use client";
 
-import type { AgChartOptions, AgChartTheme } from "ag-charts-community";
+import { AllCommunityModule, ModuleRegistry, type AgChartOptions, type AgChartTheme } from "ag-charts-community";
 import { AgCharts } from "ag-charts-react";
 import { sans } from "@/lib/fonts";
 import { PALETTE } from "@/lib/palette";
+
+// AG Charts 13+ only draws the chart and series types that are registered.
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 /** AG Charts on the dashboard's paper palette (R4). Also used for AG Grid's integrated charts. */
 
@@ -29,7 +32,7 @@ export const chartTheme: AgChartTheme = {
     subtleTextColor: PALETTE.ink2,
     backgroundColor: PALETTE.sheet,
     chartBackgroundColor: "transparent",
-    axisColor: PALETTE.rule2,
+    axisLineColor: PALETTE.rule2,
     gridLineColor: "#ebe5d7",
     accentColor: PALETTE.accent,
     tooltipBackgroundColor: PALETTE.ink,

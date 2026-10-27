@@ -7,6 +7,7 @@ import { isExempt } from "./lib/limits";
 import { agentRoutes } from "./routes/agent";
 import { dashboardRoutes } from "./routes/dashboard";
 import { demoRoutes } from "./routes/demo";
+import { insightsRoutes } from "./routes/insights";
 import { paypalRoutes } from "./routes/paypal";
 import { telegramRoutes } from "./routes/telegram";
 import { PaymentStateError } from "./services/paymentService";
@@ -48,5 +49,6 @@ export async function buildApp() {
   await app.register(paypalRoutes);
   await app.register(telegramRoutes);
   await app.register(demoRoutes);
+  await app.register(insightsRoutes);
   return app;
 }

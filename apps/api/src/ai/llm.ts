@@ -46,9 +46,9 @@ export type Attempt =
   | { stop: "fatal"; error: string };
 
 // Daily cap on model calls, so a public demo can't run up an unbounded bill (R3).
-// Hitting it counts as a failed AI check, which fails safe to ASK_HUMAN.
+// Hitting it counts as a failed AI check, which fails safe to ASK_HUMAN. The Insights agent shares it.
 const usage = { day: "", calls: 0 };
-function takeBudget(): boolean {
+export function takeBudget(): boolean {
   const today = new Date().toISOString().slice(0, 10);
   if (usage.day !== today) {
     usage.day = today;

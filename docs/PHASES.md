@@ -57,7 +57,7 @@ From paypalaihackathon.devpost.com (overview, rules, resources):
 | 🟡 Y3 | Run Phases 2 and 4 against the real sandbox and send me any error output (✅ Phase 2 and the Agent Toolkit verified Oct 21; webhooks wait for the public URL from Y5) | **Biggest technical risk:** the real PayPal calls haven't been exercised yet | Oct 22–25 |
 | 🟡 Y4 | Add the free `GEMINI_API_KEY` (or a paid `ANTHROPIC_API_KEY`), run Phase 5; add the Telegram token, run Phase 7 (✅ Telegram done Oct 21: bot @AgentGuardus_bot) | Verifies the AI layer and phone approvals | Oct 27 – Nov 2 |
 | Y5 | Deploy the three apps on Render with your **free Supabase database**, and switch on the keep-alive ping (Phase 9) | Free Render Postgres expires 30 days after creation, which lands inside Dec 1–15. Supabase doesn't expire; the ping stops it pausing | Nov 5 |
-| Y6 | Ask AG Grid for a license key (sponsor resources / Discord) | Removes the trial watermark from the video and hosted demo | Before Nov 8 |
+| Y6 | Ask AG Grid for license keys (sponsor resources / Discord): one for **AG Grid Enterprise** and one for **AG Studio** (a separate licence, "AG Studio Pro with AI"). Set them as `NEXT_PUBLIC_AG_GRID_LICENSE_KEY` and `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` on the dashboard | Removes the trial watermarks from the video and hosted demo | Before Nov 8 |
 | Y7 | Record the video (Phase 11), write the Devpost text, add screenshots and test instructions | Presentation is 1/5 of the score, and judges may rely only on these | Nov 8–10 |
 
 **Code (I can build these):**
@@ -70,6 +70,7 @@ From paypalaihackathon.devpost.com (overview, rules, resources):
 | ✅ R4 | **AG Grid prize polish** (done Oct 20): AG Charts on Budgets (stacked budget bars, dual-axis daily chart, two donuts), integrated range charts and a risk-signal sparkline in the audit grid | Best Use of AG Grid |
 | ✅ R5 | **Refund button** in the audit grid, and a **policy simulator** (done Oct 20) that replays the last 30 days against a draft policy before activation, shown in an AG Grid | Design, Technological Implementation |
 | ✅ R6 | **Phone-width pass** (done Oct 20): no page wider than 375px; cards restack, the audit grid drops its pinned column and side bar on phones. Plus a shield favicon and a generated 1200×630 social preview | Design, video quality |
+| ✅ R7 | **AG Studio Insights page** (done Oct 27): an AG Studio 3.0 dashboard over the real data, three custom widgets (risk gauge, blocked-attacks feed, anomaly alert), the paper theme, Build mode's layout tools, and the Studio Agent Framework on Gemini's free tier: Studio's built-in agents plus the **Sentinel**, an anomaly-alert agent that flags refund spikes, failed payments and attack bursts as widgets. AG Grid and AG Charts moved to 36.2 / 14.2, the versions Studio requires. The AG Grid prize asks for exactly this ("AG Studio dashboards… custom widgets, theming, and layout tools… Studio Agent Framework") | Best Use of AG Grid |
 
 R1–R6 are done, and the real-sandbox check (Y3) passed except webhooks, which need the public URL from Y5. Next: the rest of Y4 (free Gemini key; the Telegram bot is done), then Y5 (deploy) and the webhooks, Y6, and Y7. Leave Nov 11–12 as buffer.
 
@@ -260,7 +261,7 @@ npm run agent -- --ops                                                          
 
 ## Phase 8: Dashboard ✅ (Nov 3–4)
 
-**Built** (`apps/dashboard`, Next.js 15 + Tailwind 4 + AG Grid 34):
+**Built** (`apps/dashboard`, Next.js 15 + Tailwind 4 + AG Grid 36.2 + AG Charts 14.2 + AG Studio 3.0):
 - **Live**: stat tiles, real-time cards over SSE, risk gauges, Approve/Reject on held payments, the hidden snippet on attack cards.
 - **Policies**: plain English → compile → "Here's what I understood" (generated from the JSON) → collapsible JSON → Confirm & activate. Example chips, history.
 - **Audit log** (AG Grid Enterprise): grouping by merchant/decision/status/category or drag-to-group, master-detail rows with every rule, signal and piece of evidence, set and floating filters, quick search, CSV and Excel export, status bar aggregations, live updates.
@@ -269,9 +270,10 @@ npm run agent -- --ops                                                          
 - **Setup**: PayPal Vault connect, Telegram link, policy, MCP config snippet.
 - **Kill switch** in the header (also `/freeze` on Telegram).
 - **AG Charts** on Budgets; **integrated charts**, a **risk sparkline** and a **Refund** action in the audit grid; a **policy simulator** on Policies.
+- **Insights** (AG Studio): Overview / Threats / Sentinel alerts pages, custom risk-gauge, attack-feed and anomaly-alert widgets, Build mode with drag-and-drop layout and the AI chat. The agents run on Gemini through `POST /api/insights/ai/turn` (key stays on the server). Try the chat's **Flag anything suspicious** (the lead hands it to the Sentinel, which places alert widgets) and **Chart refunds and failures** (Studio's page and widget agents build a chart). The Sentinel scans the last 24 hours, or the last 7 days when the last day was quiet. Free-tier Gemini allows only a few requests a minute; one chat request can take several, so a busy minute answers "rate limit reached, wait a minute".
 - Phone layouts checked at 375px on every page; shield favicon and a social preview image (set `NEXT_PUBLIC_SITE_URL` so link previews use your hosted URL).
 
-**Your step:** ask AG Grid for a trial or hackathon license key and set `NEXT_PUBLIC_AG_GRID_LICENSE_KEY` to remove the trial watermark before recording.
+**Your step:** ask AG Grid for trial or hackathon license keys and set `NEXT_PUBLIC_AG_GRID_LICENSE_KEY` and `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` (AG Studio's licence is separate) to remove the trial watermarks before recording.
 
 ---
 
@@ -294,7 +296,7 @@ The three apps run on Render (a hackathon sponsor tool). The database is a free 
    - Free web services sleep after 15 minutes idle and take about a minute to wake. Open each URL a minute before recording, or use a paid instance for the API during judging.
 6. When the services exist, set the `sync: false` env vars:
    - **agentguard-api**: `DATABASE_URL` (step 2), `PUBLIC_BASE_URL` (its own URL), `DASHBOARD_URL`, `STORES_URL`, PayPal keys and merchant emails, `GEMINI_API_KEY` (or `ANTHROPIC_API_KEY`), `TELEGRAM_BOT_TOKEN`, optional `AGENT_API_KEY`. `TELEGRAM_MODE=webhook` is preset.
-   - **agentguard-dashboard**: `NEXT_PUBLIC_API_URL` = the API URL (baked in at build), optional AG Grid key.
+   - **agentguard-dashboard**: `NEXT_PUBLIC_API_URL` = the API URL (baked in at build), optional AG Grid and AG Studio keys.
 7. **Manual Deploy → Deploy latest commit** on the API, then the dashboard. The API build creates the tables in Supabase and adds the demo data (the seed never overwrites a policy you've confirmed). Check: Supabase → **Table Editor** now lists `PaymentRequest`, `Policy` and the other tables.
 8. PayPal app → Webhooks → point at `https://<api>/webhooks/paypal` (Phase 4) → set `PAYPAL_WEBHOOK_ID` → redeploy the API.
 9. Send `/start` to the bot again (webhook mode), then connect PayPal from the hosted **Setup** page.

@@ -75,6 +75,8 @@ services:
         sync: false
       - key: NEXT_PUBLIC_AG_GRID_LICENSE_KEY
         sync: false
+      - key: NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY # AG Studio (Insights page) has its own licence
+        sync: false
       - key: NEXT_PUBLIC_SITE_URL # this dashboard's own URL, for social previews
         sync: false
 

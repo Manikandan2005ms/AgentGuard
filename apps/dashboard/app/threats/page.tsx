@@ -5,39 +5,8 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { DecisionPill, ToolBadge } from "@/components/Pills";
 import { api, money, timeAgo } from "@/lib/api";
+import { techniqueLabel } from "@/lib/techniques";
 import { useLiveEvents } from "@/lib/useLiveEvents";
-
-const TECHNIQUE_LABELS: Record<string, string> = {
-  css_display_none: "Hidden with display:none",
-  css_visibility_hidden: "Hidden with visibility:hidden",
-  css_opacity_0: "Fully transparent text",
-  css_tiny_font: "Microscopic font size",
-  css_offscreen: "Positioned off-screen",
-  css_clipped: "Clipped out of view",
-  css_zero_height: "Zero-height container",
-  css_transparent_text: "Transparent text colour",
-  css_same_color_as_background: "Text same colour as background",
-  css_white_text: "White-on-white text",
-  html_comment: "HTML comment",
-  attribute_alt: "Image alt text",
-  attribute_title: "Title attribute",
-  "attribute_aria-label": "aria-label attribute",
-  attribute_content: "Meta content",
-  aria_hidden: "aria-hidden element",
-  html_hidden_attribute: "hidden attribute",
-  structured_data: "JSON-LD structured data",
-  unicode_tag_smuggling: "Invisible Unicode tag characters",
-  zero_width_characters: "Zero-width characters",
-  noscript_content: "<noscript> block",
-  template_content: "<template> block",
-  llm_classifier: "Flagged by the AI classifier",
-};
-
-function label(technique: string) {
-  const key = technique.split(" (")[0]!;
-  const patterns = /\(([^)]+)\)/.exec(technique)?.[1];
-  return { title: TECHNIQUE_LABELS[key] ?? key.replace(/^visible_/, "Visible text: ").replace(/_/g, " "), patterns };
-}
 
 export default function ThreatsPage() {
   const [items, setItems] = useState<PaymentRequestDTO[] | null>(null);
@@ -95,7 +64,7 @@ export default function ThreatsPage() {
                 <h4 className="mt-5 mb-2 text-[13px] font-semibold text-ink-2">What was on the page ({t.injectionEvidence.length})</h4>
                 <div className="grid gap-3 md:grid-cols-2">
                   {t.injectionEvidence.map((e, i) => {
-                    const l = label(e.technique);
+                    const l = techniqueLabel(e.technique);
                     return (
                       <div key={i} className="rounded-[5px] border border-rule bg-paper/50 p-3">
                         <div className="flex flex-wrap items-center gap-2">
