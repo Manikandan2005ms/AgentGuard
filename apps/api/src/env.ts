@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
@@ -80,5 +81,12 @@ export const llmEnabled = llmProvider !== "none";
 export const llmModels =
   llmProvider === "gemini" ? { main: env.GEMINI_MODEL, fast: env.GEMINI_FAST_MODEL } : { main: env.LLM_MODEL, fast: env.LLM_FAST_MODEL };
 export const telegramEnabled = !!env.TELEGRAM_BOT_TOKEN;
+/**
+ * The secret Telegram echoes on every webhook call. Telegram allows only A-Z, a-z, 0-9, _ and - there,
+ * but Render's generated values can contain "+", "/" and "=", so we register a hex hash of the configured value.
+ */
+export const telegramWebhookSecret = env.TELEGRAM_WEBHOOK_SECRET
+  ? createHash("sha256").update(env.TELEGRAM_WEBHOOK_SECRET).digest("hex")
+  : undefined;
 
 export const DEMO_USER_ID = "demo-user";

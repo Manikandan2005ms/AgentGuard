@@ -1,6 +1,6 @@
 import type { PaymentRequestDTO } from "@agentguard/shared";
 import { prisma } from "../db";
-import { env, telegramEnabled } from "../env";
+import { env, telegramEnabled, telegramWebhookSecret } from "../env";
 import { publish } from "../events";
 import { setNotifier } from "../services/notify";
 import { approveRequest, PaymentStateError, rejectRequest } from "../services/paymentService";
@@ -211,7 +211,7 @@ export async function startTelegram(): Promise<void> {
     if (env.TELEGRAM_MODE === "webhook") {
       await tg("setWebhook", {
         url: `${env.PUBLIC_BASE_URL}/webhooks/telegram`,
-        secret_token: env.TELEGRAM_WEBHOOK_SECRET,
+        secret_token: telegramWebhookSecret,
         allowed_updates: ["message", "callback_query"],
       });
       console.log(`[telegram] @${botUsername} webhook set`);
