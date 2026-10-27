@@ -42,7 +42,7 @@ const PAYMENT_FIELDS: Field[] = [
   count("asked", "Asked you", "1 if sent to the human for approval. Sum it."),
   count("blocked", "Blocked", "1 if blocked. Sum it for blocks."),
   count("injections", "Attacks blocked", "1 if a prompt-injection attack was caught and blocked. Sum it."),
-  count("refunds", "Refunds", "1 if money went back out (a refunded payment or a toolkit refund). Sum it per day to spot refund spikes."),
+  count("refunds", "Refund attempts", "1 for a refunded payment or a toolkit refund call, including blocked ones. Sum it per day to spot refund spikes."),
   count("failures", "Failed payments", "1 if PayPal did not complete the payment. Sum it per day to spot failures."),
 ];
 

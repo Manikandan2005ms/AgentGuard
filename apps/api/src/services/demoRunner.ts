@@ -63,7 +63,8 @@ export interface DemoRun {
 }
 
 const MAX_LINES = 400;
-const MAX_RUNTIME_MS = 4 * 60_000;
+// Free-tier Gemini can take 30 s for one check, and a scenario makes five payments.
+const MAX_RUNTIME_MS = 7 * 60_000;
 
 const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 const agentEntry = fileURLToPath(new URL("../../../demo-agent/src/index.ts", import.meta.url));
@@ -144,6 +145,8 @@ export async function startRun(scenarioId: string): Promise<DemoRun> {
       STORES_URL: env.STORES_URL,
       APPROVAL_WAIT_SECONDS: "180",
       NO_COLOR: "1",
+      // With both set, Node prints a NO_COLOR/FORCE_COLOR warning into the visible console (npm run dev sets FORCE_COLOR).
+      FORCE_COLOR: undefined,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

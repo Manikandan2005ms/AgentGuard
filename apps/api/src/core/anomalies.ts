@@ -59,7 +59,7 @@ export const isAttackBlocked = (r: Pick<AnomalyRow, "injectionDetected" | "decis
 
 const round = (n: number, places = 1) => Math.round(n * 10 ** places) / 10 ** places;
 const usd = (n: number) => `$${n.toFixed(2)}`;
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 
 function topMerchants(rows: AnomalyRow[], max = 3): string[] {
   const counts = new Map<string, number>();
@@ -87,19 +87,26 @@ export function detectAnomalies(rows: AnomalyRow[], budgets: AnomalyBudget[], no
   const per = windowHours === 24 ? "a day" : windowHours === 168 ? "a week" : `per ${windowHours} h`;
   const found: Anomaly[] = [];
 
-  // Refunds: a burst of money going back out is the classic sign of a looping or hijacked agent.
+  // Refunds: a burst of money going back out, or of attempts to send it, is the classic sign of a looping or
+  // hijacked agent. Blocked and failed attempts count, and the detail says how many really went through.
   const refunds = recent.filter(isRefund);
   const refundBaseline = perWindow(before.filter(isRefund).length);
   if (refunds.length >= 2 && refunds.length >= 3 * refundBaseline) {
     const total = refunds.reduce((s, r) => s + r.amount, 0);
+    const outcome = [
+      [refunds.filter((r) => r.status === "REFUNDED" || r.status === "PAID").length, "went through"],
+      [refunds.filter((r) => r.status === "BLOCKED").length, "blocked"],
+      [refunds.filter((r) => r.status === "HELD" || r.status === "PENDING").length, "waiting for you"],
+      [refunds.filter(isFailure).length, "failed at PayPal"],
+    ] as const;
     found.push({
       id: `refund_spike:${windowHours}`,
       kind: "refund_spike",
       severity: refunds.length >= 5 || total >= 200 ? "high" : "medium",
-      title: `Refund spike: ${plural(refunds.length, "refund")} ${span}`,
+      title: `Refund spike: ${plural(refunds.length, "refund attempt")} ${span}`,
       detail:
-        `${plural(refunds.length, "refund")} worth ${usd(total)}, against a normal ${round(refundBaseline)} ${per}. ` +
-        `Check that each one was asked for, and freeze the agent if not.`,
+        `${plural(refunds.length, "refund attempt")}${total > 0 ? ` (${usd(total)} requested)` : ""}, against a normal ${round(refundBaseline)} ${per}: ` +
+        `${outcome.filter(([n]) => n > 0).map(([n, what]) => `${n} ${what}`).join(", ")}. Check that each one was asked for, and freeze the agent if not.`,
       value: refunds.length,
       baseline: round(refundBaseline),
       unit: "count",
@@ -121,7 +128,7 @@ export function detectAnomalies(rows: AnomalyRow[], budgets: AnomalyBudget[], no
       severity: failures.length >= 3 ? "high" : failures.length === 2 ? "medium" : "low",
       title: `${plural(failures.length, "failed payment")} ${span}`,
       detail:
-        `PayPal did not complete ${plural(failures.length, "payment")} (normal: ${round(perWindow(before.filter(isFailure).length))}).` +
+        `PayPal did not complete ${plural(failures.length, "payment or refund", "payments or refunds")} (normal: ${round(perWindow(before.filter(isFailure).length))}).` +
         (reasons.length ? ` Reason: ${reasons.join("; ")}.` : ""),
       value: failures.length,
       baseline: round(perWindow(before.filter(isFailure).length)),

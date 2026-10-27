@@ -6,6 +6,8 @@ import { log } from "./log";
 export const STORES_URL = (process.env.STORES_URL ?? "http://localhost:3001").replace(/\/$/, "");
 export const MCP_URL = process.env.AGENTGUARD_MCP_URL ?? "http://localhost:4000/mcp";
 const APPROVAL_WAIT_SECONDS = Number(process.env.APPROVAL_WAIT_SECONDS ?? 180);
+// A guarded call runs several AI checks; on a free tier a slow minute must not crash the agent (MCP's default is 60 s).
+const TOOL_TIMEOUT_MS = 150_000;
 
 export interface StoreInfo {
   slug: string;
@@ -97,7 +99,7 @@ export class AgentGuard {
   }
 
   private async call<T>(name: string, args: Record<string, unknown>): Promise<T> {
-    const res = await this.client.callTool({ name, arguments: args });
+    const res = await this.client.callTool({ name, arguments: args }, undefined, { timeout: TOOL_TIMEOUT_MS });
     const content = res.content as { type: string; text?: string }[];
     const text = content.find((c) => c.type === "text")?.text ?? "{}";
     return JSON.parse(text) as T;
@@ -156,10 +158,14 @@ export class AgentGuard {
    * return AgentGuard's decision, and a held one waits for the human like a payment does.
    */
   async paypalTool(name: string, args: Record<string, unknown>, sourceContent?: string): Promise<unknown> {
-    const res = await this.client.callTool({
-      name,
-      arguments: { ...args, ...(this.taskId ? { agentguard_task_id: this.taskId } : {}), ...(sourceContent ? { agentguard_source_content: sourceContent } : {}) },
-    });
+    const res = await this.client.callTool(
+      {
+        name,
+        arguments: { ...args, ...(this.taskId ? { agentguard_task_id: this.taskId } : {}), ...(sourceContent ? { agentguard_source_content: sourceContent } : {}) },
+      },
+      undefined,
+      { timeout: TOOL_TIMEOUT_MS },
+    );
     const text = (res.content as { type: string; text?: string }[]).find((c) => c.type === "text")?.text ?? "{}";
     const json = JSON.parse(text) as Partial<AgentResult> & Record<string, unknown>;
     if (res.isError) {

@@ -146,9 +146,9 @@ The database is a free **Supabase** project: set the API's `DATABASE_URL` to its
 
 ## Judge test drive
 
-- Dashboard: `https://<dashboard>.onrender.com` (fill in after deploying)
-- Sandbox buyer login: *(sandbox account only, add after creating it)*
-- Steps: open **Try it** and run the four scenarios (attack blocked, one-tap approval, PayPal Agent Toolkit ops agent, without AgentGuard). Watch the **Live**, **Audit log** and **Threats** pages update. **Reset demo** restores everything. Or import `postman/AgentGuard.postman_collection.json`, set `baseUrl`, and run folder 2 in order.
+- Dashboard: **https://agentguard-dashboard-2s42.onrender.com** · API: https://agentguard-api-15j3.onrender.com · Demo stores: https://agentguard-stores.onrender.com
+- No login needed: the demo PayPal **sandbox** wallet is already connected. The free hosting sleeps when idle, so the first page can take about a minute to wake.
+- Steps: open **Try it** and run the four scenarios (attack blocked, one-tap approval, PayPal Agent Toolkit ops agent, without AgentGuard). Each takes one to three minutes, because every payment runs several AI checks on Gemini's free tier. Watch the **Live**, **Audit log** and **Threats** pages update. Then open **Insights**, switch to **Build + AI** and click **Flag anything suspicious**: the Sentinel agent places alert widgets on the *Sentinel alerts* page (or press **Scan now** for the same rules without AI). **Reset demo** restores everything. Or import `postman/AgentGuard.postman_collection.json`, set `baseUrl`, and run folder 2 in order.
 
 ## AI tools used
 
@@ -162,7 +162,7 @@ AgentGuard runs its AI checks on **Google Gemini** (`GEMINI_API_KEY`, free tier)
 | Categorizer | Gemini 3.5 Flash-Lite / Claude Haiku 5.5 | Item → spending category (cached). Can only make a category stricter, never relax a high-risk keyword match. |
 | Explainer | Gemini 3.5 Flash-Lite / Claude Haiku 5.5 | One-sentence reason for Telegram, the agent and the audit log. The decision itself never comes from the model. |
 | Demo agent | Claude Opus 5.5 | Anthropic SDK tool runner; deliberately naive by default to simulate a vulnerable agent. Without an Anthropic key, the scripted agent runs instead. |
-| Insights agents (AG Studio) | Gemini 3.6 Flash, falling back to 3.5 Flash-Lite (Gemini only; on whenever `GEMINI_API_KEY` is set) | Studio's built-in agents and the Sentinel build widgets and alerts from plain English. The Sentinel only presents anomalies that AgentGuard's rules found; it can't invent one. Shares the `LLM_DAILY_CALL_LIMIT` cap. |
+| Insights agents (AG Studio) | Gemini 3.5 Flash-Lite, then 3.6 Flash if it is rate limited (Gemini only; on whenever `GEMINI_API_KEY` is set) | Studio's built-in agents and the Sentinel build widgets and alerts from plain English. The Sentinel only presents anomalies that AgentGuard's rules found; it can't invent one. Shares the `LLM_DAILY_CALL_LIMIT` cap. |
 
 Every check asks for structured JSON output (a JSON Schema generated from the same Zod schema that validates the reply). Gemini is called through its Interactions API; Claude through the official Anthropic TypeScript SDK, with the Opus calls opting into server-side refusal fallbacks. *(Add any AI tools you used to build the project here as well.)*
 

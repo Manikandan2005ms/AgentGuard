@@ -8,7 +8,9 @@ import { insightsAnomalies, insightsData } from "../services/insightsService";
 
 /** The Studio agent runs on Gemini's free tier whenever a Gemini key is set (LLM_PROVIDER=none turns it off). */
 const studioAiEnabled = () => !!env.GEMINI_API_KEY && env.LLM_PROVIDER !== "none";
-const studioModels = () => [...new Set([env.GEMINI_MODEL, env.GEMINI_FAST_MODEL])];
+// The fast model first: on the free tier it has far more requests per day (3.6 Flash allows 20), and keeping a
+// conversation on one model keeps Gemini's thought signatures valid.
+const studioModels = () => [...new Set([env.GEMINI_FAST_MODEL, env.GEMINI_MODEL])];
 
 export async function insightsRoutes(app: FastifyInstance) {
   // ---- Data for the AG Studio dashboard (read-only) ----

@@ -45,6 +45,14 @@ describe("anomaly detection", () => {
     const [spike] = detectAnomalies(rows, [], NOW);
     expect(spike).toMatchObject({ kind: "refund_spike", value: 3, baseline: 0, severity: "high", trendField: "refunds" });
     expect(spike!.sampleIds[0]).toBe(rows[0]!.id);
+    expect(spike!.detail).toContain("3 refund attempts ($225.00 requested)");
+  });
+
+  it("counts blocked and failed refund attempts, and says how many went through", () => {
+    const refund = { kind: "paypal_tool", toolName: "create_refund", merchant: "PayPal account" };
+    const rows = [row(1, { ...refund, status: "PAID", amount: 3.99 }), row(2, { ...refund, status: "BLOCKED", amount: 0 }), row(3, { ...refund, status: "FAILED" })];
+    const spike = detectAnomalies(rows, [], NOW).find((a) => a.kind === "refund_spike");
+    expect(spike!.detail).toContain("1 went through, 1 blocked, 1 failed at PayPal");
   });
 
   it("does not call a normal refund rate a spike", () => {
